@@ -1,5 +1,6 @@
 pluginManagement {
     repositories {
+        mavenCentral()
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -19,6 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Test"
+rootProject.name = "private vpn"
 include(":app")
- 
