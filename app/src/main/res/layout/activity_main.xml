@@ -38,7 +38,7 @@
         app:layout_constraintVertical_bias="0.036" />
 
     <ImageView
-        android:id="@+id/priemum"
+        android:id="@+id/premium"
         android:layout_width="30dp"
         android:layout_height="25dp"
         android:src="@drawable/premium"

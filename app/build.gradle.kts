@@ -60,4 +60,5 @@ dependencies {
 
     // Add the OpenVPN .aar file directly from the libs folder
     implementation(files("libs/ics-openvpn-0.7.22.aar"))
+
 }
