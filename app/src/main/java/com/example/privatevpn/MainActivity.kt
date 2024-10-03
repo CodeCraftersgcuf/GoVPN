@@ -11,9 +11,12 @@ import android.os.Looper
 import android.util.Log
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.airbnb.lottie.LottieAnimationView
+import com.bumptech.glide.Glide
 import de.blinkt.openvpn.VpnProfile
 import de.blinkt.openvpn.core.ConfigParser
 import de.blinkt.openvpn.core.ProfileManager
@@ -27,10 +30,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var countrySelector: LinearLayout
     private lateinit var premium: ImageView
     private lateinit var toggle: ImageView
-    private lateinit var button: ImageView
+    private lateinit var button: LottieAnimationView
+    private lateinit var statusTextView: TextView
 
     private var isConnected = false
     private lateinit var vpnProfile: VpnProfile
+    private lateinit var countryNameTextView: TextView
+    private lateinit var profileImageView: ImageView
+
+    private var isAnimating = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,15 +48,16 @@ class MainActivity : AppCompatActivity() {
         premium = findViewById(R.id.premium)
         toggle = findViewById(R.id.toggle)
         button = findViewById(R.id.button)
+        statusTextView = findViewById(R.id.textView)
+        countryNameTextView = findViewById(R.id.countryName)
+        profileImageView = findViewById(R.id.profile_image)
 
-        // Request permissions for notifications on newer Android versions
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 102)
             }
         }
 
-        // Set up listeners for UI components
         toggle.setOnClickListener {
             startActivity(Intent(this, sidenavigationActivity::class.java))
         }
@@ -62,20 +71,68 @@ class MainActivity : AppCompatActivity() {
         }
 
         button.setOnClickListener {
+            if (isAnimating) return@setOnClickListener
+
+            isAnimating = true
+            button.loop(true)
+            button.playAnimation()
+
             if (isConnected) {
                 disconnectVPN()
+                statusTextView.text = "Disconnecting..."
+
+                Handler(Looper.getMainLooper()).postDelayed({
+                    button.cancelAnimation()
+                    button.setProgress(1f)
+                    statusTextView.text = "Tap to Connect"
+                    isAnimating = false
+                }, 1000)
+
             } else {
-                fetchOpenVPNProfile()
+                val serverId = intent.getIntExtra("SERVER_ID", -1)
+                if (serverId != -1) {
+                    fetchOpenVPNProfile(serverId)
+                    statusTextView.text = "Connecting..."
+
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        button.cancelAnimation()
+                        button.setProgress(1f)
+                        statusTextView.text = "Tap to Disconnect"
+                        isAnimating = false
+                    }, 4000)
+                } else {
+                    Toast.makeText(this, "Invalid Server ID", Toast.LENGTH_SHORT).show()
+                    isAnimating = false
+                }
             }
         }
 
         loadSelectedLanguage()
+
+        // Retrieve country data from Intent
+        val countryName = intent.getStringExtra("COUNTRY_NAME") ?: "United States"
+        val flagUrl = intent.getStringExtra("FLAG_URL") ?: "" // Assuming flagUrl is passed correctly
+
+        updateCountrySelector(countryName, flagUrl)
     }
 
-    private fun fetchOpenVPNProfile() {
+    fun updateCountrySelector(countryName: String, flagUrl: String) {
+        countryNameTextView.text = countryName
+        if (flagUrl.isNotEmpty()) {
+            Glide.with(this)
+                .load(flagUrl)
+                .into(profileImageView)
+        } else {
+            // Set a default image or handle error case
+            profileImageView.setImageResource(R.drawable.us) // Replace with your default flag resource
+        }
+    }
+
+    private fun fetchOpenVPNProfile(serverId: Int) {
         val client = OkHttpClient()
+        val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=12312"
         val request = Request.Builder()
-            .url("https://govpn.ai/api/ovpn-file/1?vpn_username=12312")
+            .url(requestUrl)
             .get()
             .build()
 
@@ -124,18 +181,12 @@ class MainActivity : AppCompatActivity() {
     private fun startVPN(vpnProfile: VpnProfile) {
         val vpnIntent = VpnService.prepare(this)
         if (vpnIntent != null) {
-            // Request VPN permission if necessary
             startActivityForResult(vpnIntent, 0)
         } else {
-            // Start VPN without needing permission (already granted)
             try {
-                ProfileManager.getInstance(this).addProfile(vpnProfile) // Add profile to ProfileManager
-
-                // Start VPN with only the required parameters
+                ProfileManager.getInstance(this).addProfile(vpnProfile)
                 VPNLaunchHelper.startOpenVpn(vpnProfile, this)
-
-                isConnected = true  // Update connection state
-                updateButtonAppearance()  // Update UI
+                isConnected = true
             } catch (e: Exception) {
                 Log.e("VPN", "Failed to start VPN", e)
                 Toast.makeText(this, "Failed to start VPN", Toast.LENGTH_SHORT).show()
@@ -143,49 +194,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
     private fun disconnectVPN() {
         try {
             val disconnectIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
             disconnectIntent.action = de.blinkt.openvpn.core.OpenVPNService.DISCONNECT_VPN
             startService(disconnectIntent)
             isConnected = false
-            updateButtonAppearance()
             Toast.makeText(this, "Disconnected successfully", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Log.e("VPN", "Failed to disconnect VPN", e)
             Toast.makeText(this, "Failed to disconnect VPN", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun updateButtonAppearance() {
-        if (isConnected) {
-            button.setImageResource(android.R.drawable.ic_media_pause)
-            button.contentDescription = "Disconnect"
-
-            // Show "Connecting..." message first
-            Toast.makeText(this, "Connecting...", Toast.LENGTH_SHORT).show()
-
-            // Delay for 2 seconds before showing "VPN Connected"
-            Handler(Looper.getMainLooper()).postDelayed({
-                Toast.makeText(this, "VPN Connected", Toast.LENGTH_SHORT).show()
-            }, 2000) // 2000 milliseconds = 2 seconds
-        } else {
-            button.setImageResource(android.R.drawable.ic_media_play)
-            button.contentDescription = "Connect"
-            Toast.makeText(this, "VPN Disconnected", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun createPendingIntent(): PendingIntent {
-        val intent = Intent(this, MainActivity::class.java)
-        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        } else {
-            PendingIntent.FLAG_UPDATE_CURRENT
-        }
-        return PendingIntent.getActivity(this, 0, intent, pendingIntentFlags)
     }
 
     private fun loadSelectedLanguage() {

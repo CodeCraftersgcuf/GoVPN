@@ -58,6 +58,10 @@ dependencies {
 
     implementation("com.google.android.material:material:1.6.1")
 
+    implementation ("com.airbnb.android:lottie:6.5.2")
+    implementation ("com.github.bumptech.glide:glide:4.14.2")
+    annotationProcessor ("com.github.bumptech.glide:compiler:4.14.2")
+
     // Add the OpenVPN .aar file directly from the libs folder
     implementation(files("libs/ics-openvpn-0.7.22.aar"))
 
