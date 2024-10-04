@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialize Views
         countrySelector = findViewById(R.id.countrySelector)
         premium = findViewById(R.id.premium)
         toggle = findViewById(R.id.toggle)
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         countryNameTextView = findViewById(R.id.countryName)
         profileImageView = findViewById(R.id.profile_image)
 
+        // Check Notification Permission for Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 102)
@@ -89,30 +91,25 @@ class MainActivity : AppCompatActivity() {
                 }, 1000)
 
             } else {
-                val serverId = intent.getIntExtra("SERVER_ID", -1)
-                if (serverId != -1) {
-                    fetchOpenVPNProfile(serverId)
-                    statusTextView.text = "Connecting..."
+                // Fetch server ID from intent or default to 1
+                val serverId = intent.getIntExtra("SERVER_ID", 1)
+                fetchOpenVPNProfile(serverId)
+                statusTextView.text = "Connecting..."
 
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        button.cancelAnimation()
-                        button.setProgress(1f)
-                        statusTextView.text = "Tap to Disconnect"
-                        isAnimating = false
-                    }, 4000)
-                } else {
-                    Toast.makeText(this, "Invalid Server ID", Toast.LENGTH_SHORT).show()
+                Handler(Looper.getMainLooper()).postDelayed({
+                    button.cancelAnimation()
+                    button.setProgress(1f)
+                    statusTextView.text = "Tap to Disconnect"
                     isAnimating = false
-                }
+                }, 4000)
             }
         }
 
         loadSelectedLanguage()
 
-        // Retrieve country data from Intent
+        // Retrieve country data from Intent or default to the United States
         val countryName = intent.getStringExtra("COUNTRY_NAME") ?: "United States"
         val flagUrl = intent.getStringExtra("FLAG_URL") ?: "" // Assuming flagUrl is passed correctly
-
         updateCountrySelector(countryName, flagUrl)
     }
 
@@ -123,7 +120,6 @@ class MainActivity : AppCompatActivity() {
                 .load(flagUrl)
                 .into(profileImageView)
         } else {
-            // Set a default image or handle error case
             profileImageView.setImageResource(R.drawable.us) // Replace with your default flag resource
         }
     }
@@ -187,12 +183,22 @@ class MainActivity : AppCompatActivity() {
                 ProfileManager.getInstance(this).addProfile(vpnProfile)
                 VPNLaunchHelper.startOpenVpn(vpnProfile, this)
                 isConnected = true
+
+                // Redirect to ConnectActivity after a delay of 2 seconds
+                Handler().postDelayed({
+                    val intent = Intent(this, ConnectActivity::class.java)
+                    startActivity(intent)
+                    finish()  // Close MainActivity so back button doesn't go back to it
+                }, 2000)  // 2000 milliseconds = 2 seconds
+
             } catch (e: Exception) {
                 Log.e("VPN", "Failed to start VPN", e)
                 Toast.makeText(this, "Failed to start VPN", Toast.LENGTH_SHORT).show()
             }
         }
     }
+
+
 
     private fun disconnectVPN() {
         try {

@@ -2,26 +2,24 @@ package com.example.privatevpn
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import okhttp3.*
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.IOException
 
 class AllFragment : Fragment() {
 
     private lateinit var countryListLayout: LinearLayout
+    private lateinit var loadingIndicator: ProgressBar // Declare ProgressBar
     private val client = OkHttpClient()
 
     override fun onCreateView(
@@ -32,12 +30,13 @@ class AllFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_all, container, false)
 
         countryListLayout = view.findViewById(R.id.countryListLayout)
+        loadingIndicator = view.findViewById(R.id.loadingIndicator) // Initialize ProgressBar
 
-        // Introduce a delay of 5 seconds before fetching data
-        Handler(Looper.getMainLooper()).postDelayed({
-            // Fetch countries and cities data from the API after 5 seconds
-            fetchCountries()
-        }, 10)
+        // Show loading indicator
+        loadingIndicator.visibility = View.VISIBLE
+
+        // Fetch countries and cities data from the API immediately
+        fetchCountries()
 
         return view
     }
@@ -52,6 +51,7 @@ class AllFragment : Fragment() {
                 e.printStackTrace()
                 activity?.runOnUiThread {
                     Toast.makeText(context, "Failed to load data", Toast.LENGTH_SHORT).show()
+                    loadingIndicator.visibility = View.GONE // Hide loading indicator
                 }
             }
 
@@ -61,6 +61,7 @@ class AllFragment : Fragment() {
                     activity?.runOnUiThread {
                         // Populate UI with country data
                         populateCountryList(data)
+                        loadingIndicator.visibility = View.GONE // Hide loading indicator after data is loaded
                     }
                 }
             }
@@ -150,6 +151,9 @@ class AllFragment : Fragment() {
                             putExtra("FLAG_URL", flagUrl) // Pass the flag URL
                         }
                         startActivity(intent)
+
+                        // Close the fragment when transitioning to MainActivity
+                        requireActivity().finish()
                     }
                 }
             }
