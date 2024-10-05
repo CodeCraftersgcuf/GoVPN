@@ -29,8 +29,11 @@
         <!-- Google Maps API key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyA52Bt_VkZ83JfA_lrrxZNDOTFBV2Go5IE" />
-
+            android:value="AIzaSyA52Bt_VkZ83JfA_lrrxZNDOTFBV2Go5IE"
+            />
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-1156738411664537~2249963319"/>
         <!-- Explicit declaration of the VPN service used by OpenVPN -->
         <service android:name="de.blinkt.openvpn.core.OpenVPNService"
             android:exported="true"

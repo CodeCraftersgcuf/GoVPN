@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -11,6 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import okhttp3.*
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import android.os.CountDownTimer
 import androidx.appcompat.app.AlertDialog
 import de.hdodenhof.circleimageview.CircleImageView
@@ -32,6 +34,15 @@ class ConnectActivity : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
     private var isTimerRunning = false
     private val additionalTimeInMillis: Long = 60 * 60 * 1000  // 60 minutes in milliseconds
+    private var isVpnDisconnected = false  // Flag to prevent multiple redirects
+
+    // Handler for periodically checking IP
+    private val handler = Handler(Looper.getMainLooper())
+    private val ipCheckInterval: Long = 1000  // Check IP status every 1 second
+
+    // Handler for secondary IP check logic with 3-second delay
+    private val secondaryHandler = Handler(Looper.getMainLooper())
+    private val secondaryIpCheckInterval: Long = 3000  // Check IP status every 3 seconds
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,25 +67,26 @@ class ConnectActivity : AppCompatActivity() {
 
         // Start the timer if it is not running and has time left
         if (isTimerRunning && timeLeftInMillis > 0) {
-            startTimer()  // If already running, just ensure it's started with correct remaining time
+            startTimer()
         } else if (!isTimerRunning && timeLeftInMillis > 0) {
             updateTimerText()  // Display the saved time
         }
 
         // Set onClickListeners for the buttons
         setOnClickListeners()
+
+        // Start checking for IP changes every 1 second
+        handler.postDelayed(ipStatusChecker, ipCheckInterval)
+
+        // Start secondary IP check logic every 3 seconds
+        secondaryHandler.postDelayed(secondaryIpStatusChecker, secondaryIpCheckInterval)
     }
 
     override fun onResume() {
         super.onResume()
 
-        // Set a dummy IP while fetching the actual one
-        ipAddress.text = "IP: 0.0.0.0"
-
-        // Fetch the actual IP after 3 seconds
-        Handler().postDelayed({
-            fetchIpAddress()
-        }, 2000)
+        // Fetch the IP immediately when returning to the app
+        fetchIpAddress()
 
         // Restart the timer if the app returns to this activity after disconnection
         if (!isTimerRunning && timeLeftInMillis > 0) {
@@ -84,9 +96,7 @@ class ConnectActivity : AppCompatActivity() {
 
     private fun setOnClickListeners() {
         profile_image.setOnClickListener {
-//            val intent = Intent(this, AllServersActivity::class.java)
-//            startActivity(intent)
-        Toast.makeText(this, "Please disconnect VPN before Changing Server", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please disconnect VPN before Changing Server", Toast.LENGTH_SHORT).show()
         }
 
         priemums.setOnClickListener {
@@ -119,10 +129,15 @@ class ConnectActivity : AppCompatActivity() {
     private fun startTimer() {
         timer = object : CountDownTimer(timeLeftInMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                timeLeftInMillis = millisUntilFinished
-                updateTimerText()
+                val secondsRemaining = (millisUntilFinished / 1000) % 60
+                val currentSeconds = (timeLeftInMillis / 1000) % 60
 
-                // Save the remaining time to SharedPreferences
+                if (secondsRemaining != currentSeconds) {
+                    timeLeftInMillis = millisUntilFinished
+                    updateTimerText()
+                }
+
+                // Save the remaining time to SharedPreferences every second
                 val editor = sharedPreferences.edit()
                 editor.putLong("timeLeftInMillis", timeLeftInMillis)
                 editor.putBoolean("isTimerRunning", true)
@@ -146,12 +161,12 @@ class ConnectActivity : AppCompatActivity() {
         // Save the state when the timer is stopped
         val editor = sharedPreferences.edit()
         editor.putBoolean("isTimerRunning", false)
+        editor.putLong("timeLeftInMillis", timeLeftInMillis)
         editor.apply()
     }
 
     private fun increaseTimerBy60Minutes() {
-        // Check if the current time left is already one hour or more
-        if (timeLeftInMillis >= 60 * 60 * 1000) { // 60 minutes in milliseconds
+        if (timeLeftInMillis >= 60 * 60 * 1000) {
             Toast.makeText(this, "Cannot add more time, already over 1 hour", Toast.LENGTH_SHORT).show()
             return
         }
@@ -159,12 +174,11 @@ class ConnectActivity : AppCompatActivity() {
         // Add 60 minutes to the current time left
         timeLeftInMillis += additionalTimeInMillis
 
-        // If the timer is already running, restart it with the new time
         if (isTimerRunning) {
             timer.cancel()
             startTimer()
         } else {
-            updateTimerText() // Update the displayed time if not running
+            updateTimerText()
             startTimer()
         }
 
@@ -172,46 +186,129 @@ class ConnectActivity : AppCompatActivity() {
     }
 
     private fun fetchIpAddress() {
-        val client = OkHttpClient()
-        val request = Request.Builder()
-            .url("https://ipinfo.io/json")
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
             .build()
+
+        Handler(Looper.getMainLooper()).postDelayed({
+            val request = Request.Builder()
+                .url("https://ipinfo.io/json")
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    // Handle failure silently to avoid UI interruption
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val responseData = response.body?.string()
+                    response.body?.close()
+                    runOnUiThread {
+                        if (response.isSuccessful && responseData != null) {
+                            try {
+                                val jsonObject = JSONObject(responseData)
+                                val ip = jsonObject.getString("ip")
+                                ipAddress.text = "IP: $ip"
+
+                                val storedIp = sharedPreferences.getString("storedIp", "0.0.0.0")
+                                if (storedIp == "0.0.0.0") {
+                                    sharedPreferences.edit()
+                                        .putString("storedIp", ip)
+                                        .apply()
+                                }
+                            } catch (e: Exception) {
+                                // Handle failure silently
+                            }
+                        } else {
+                            ipAddress.text = "Unknown IP"
+                        }
+                    }
+                }
+            })
+        }, 2000)
+    }
+
+    private val ipStatusChecker = object : Runnable {
+        override fun run() {
+            fetchAndCheckIpAddress()
+            if (!isVpnDisconnected) {
+                handler.postDelayed(this, ipCheckInterval)
+            }
+        }
+    }
+
+    private fun fetchAndCheckIpAddress() {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build()
+
+        val request = Request.Builder().url("https://ipinfo.io/json").build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    Toast.makeText(this@ConnectActivity, "Failed to get IP address", Toast.LENGTH_SHORT).show()
-                }
+                // Handle failure silently
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val responseData = response.body?.string()
+                response.body?.close()
                 runOnUiThread {
-                    if (responseData != null) {
-                        val jsonObject = JSONObject(responseData)
-                        val ip = jsonObject.getString("ip")
-                        ipAddress.text = "IP: $ip"
-                    } else {
-                        ipAddress.text = "Unknown IP"
+                    if (response.isSuccessful && responseData != null) {
+                        try {
+                            val jsonObject = JSONObject(responseData)
+                            val currentIp = jsonObject.getString("ip")
+                            checkIpAddress(currentIp)
+                        } catch (e: Exception) {
+                            // Handle failure silently
+                        }
                     }
                 }
             }
         })
     }
+
+    private val secondaryIpStatusChecker = object : Runnable {
+        override fun run() {
+            performSecondaryIpCheck()
+            if (!isVpnDisconnected) {
+                secondaryHandler.postDelayed(this, secondaryIpCheckInterval)
+            }
+        }
+    }
+
+    private fun checkIpAddress(currentIp: String) {
+        val allowedIps = setOf("139.59.171.30", "157.245.83.117", "0.0.0.0")
+        val storedIp = sharedPreferences.getString("storedIp", "0.0.0.0") ?: "0.0.0.0"
+
+        if (currentIp !in allowedIps || storedIp !in allowedIps) {
+            stopTimer()
+            if (!isVpnDisconnected) {
+                isVpnDisconnected = true
+                Toast.makeText(this, "VPN disconnected due to IP change.", Toast.LENGTH_SHORT).show()
+                disconnectVPN()
+            }
+        }
+    }
+
+    private fun performSecondaryIpCheck() {
+        fetchIpAddress()
+    }
+
     private fun showDisconnectDialog() {
-        // Create a custom dialog
         val dialogView = layoutInflater.inflate(R.layout.dialog_disconnect, null)
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setCancelable(false)
             .create()
 
-        // Initialize views in the dialog
         val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
         val confirmButton = dialogView.findViewById<Button>(R.id.confirmButton)
 
-        // Set countdown timer for the confirm button
-        val countdownTimeInMillis: Long = 5000 // 5 seconds countdown
+        val countdownTimeInMillis: Long = 5000
         val countDownTimer = object : CountDownTimer(countdownTimeInMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 val secondsRemaining = millisUntilFinished / 1000
@@ -219,62 +316,68 @@ class ConnectActivity : AppCompatActivity() {
             }
 
             override fun onFinish() {
-                // Change the text to "Disconnect" once the countdown finishes
                 confirmButton.text = "Disconnect"
-                confirmButton.isEnabled = true // Enable the button to be clicked after the countdown
+                confirmButton.isEnabled = true
             }
         }
         countDownTimer.start()
-
-        // Disable the confirm button initially so disconnection can't happen until timer finishes
         confirmButton.isEnabled = false
 
-        // Confirm button click listener
         confirmButton.setOnClickListener {
-            // If the button says "Disconnect", perform the disconnection
             if (confirmButton.text == "Disconnect") {
-                disconnectVPN() // Call the disconnection method
-                dialog.dismiss() // Close the dialog
+                disconnectVPN()
+                stopTimer()
+                dialog.dismiss()
             }
         }
 
-        // Cancel button click listener
         cancelButton.setOnClickListener {
-            countDownTimer.cancel()  // Stop the countdown
-            dialog.dismiss()         // Close the dialog
+            countDownTimer.cancel()
+            dialog.dismiss()
         }
 
-        dialog.show()  // Show the dialog
+        dialog.show()
     }
 
     private fun disconnectVPN() {
         try {
-            // Stop the timer before disconnecting
             stopTimer()
+            handler.removeCallbacksAndMessages(null)
+            secondaryHandler.removeCallbacksAndMessages(null)
 
-            // Disconnect from the VPN
             val disconnectIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
             disconnectIntent.action = de.blinkt.openvpn.core.OpenVPNService.DISCONNECT_VPN
             startService(disconnectIntent)
 
-            // Save the remaining time after disconnecting, ignoring milliseconds
-            val remainingMinutesInMillis = (timeLeftInMillis / 1000 / 60) * 60 * 1000  // Rounds down to the nearest minute
-            sharedPreferences.edit().putLong("timeLeftInMillis", remainingMinutesInMillis).apply()
+            val remainingMinutesInMillis = (timeLeftInMillis / 1000 / 60) * 60 * 1000
+            sharedPreferences.edit()
+                .putLong("timeLeftInMillis", remainingMinutesInMillis)
+                .putBoolean("isTimerRunning", false)
+                .putBoolean("isConnected", false)
+                .apply()
 
-            Toast.makeText(this, "VPN Disconnected", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "VPN Disconnected...", Toast.LENGTH_SHORT).show()
 
-            // Optionally, navigate back to MainActivity
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()  // Close ConnectActivity so it doesn't appear in the back stack
-
+            Handler(Looper.getMainLooper()).postDelayed({
+                redirectToMainActivity()
+            }, 1000)
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to disconnect VPN", Toast.LENGTH_SHORT).show()
+            // Handle failure silently
         }
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
-        Toast.makeText(this, "Please disconnect VPN before exiting", Toast.LENGTH_SHORT).show()
+    private fun redirectToMainActivity() {
+        if (!isFinishing) {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
+        secondaryHandler.removeCallbacksAndMessages(null)
     }
 }

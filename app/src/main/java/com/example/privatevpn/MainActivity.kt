@@ -1,10 +1,11 @@
 package com.example.privatevpn
 
 import android.app.ActivityManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -55,6 +56,11 @@ class MainActivity : AppCompatActivity() {
         countryNameTextView = findViewById(R.id.countryName)
         profileImageView = findViewById(R.id.profile_image)
 
+        // Check for Internet Connectivity
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, "No Internet Connection", Toast.LENGTH_LONG).show()
+        }
+
         // Check Notification Permission for Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -90,7 +96,7 @@ class MainActivity : AppCompatActivity() {
                     button.setProgress(1f)
                     statusTextView.text = "Tap to Connect"
                     isAnimating = false
-                }, 1000)
+                }, 100)
 
             } else {
                 // Fetch server ID from intent or default to 1
@@ -101,9 +107,9 @@ class MainActivity : AppCompatActivity() {
                 Handler(Looper.getMainLooper()).postDelayed({
                     button.cancelAnimation()
                     button.setProgress(1f)
-                    statusTextView.text = "Tap to Disconnect"
+                    statusTextView.text = "Tap again to Connect."
                     isAnimating = false
-                }, 4000)
+                }, 5200)
             }
         }
 
@@ -215,7 +221,7 @@ class MainActivity : AppCompatActivity() {
                     val intent = Intent(this, ConnectActivity::class.java)
                     startActivity(intent)
                     finish()  // Close MainActivity so back button doesn't go back to it
-                }, 1000)  // 2000 milliseconds = 2 seconds
+                }, 3000)  // 2000 milliseconds = 2 seconds
 
             } catch (e: Exception) {
                 Log.e("VPN", "Failed to start VPN", e)
@@ -251,9 +257,24 @@ class MainActivity : AppCompatActivity() {
         resources.updateConfiguration(config, resources.displayMetrics)
     }
 
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork ?: return false
+            val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+            return when {
+                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+                else -> false
+            }
+        } else {
+            val networkInfo = connectivityManager.activeNetworkInfo
+            return networkInfo != null && networkInfo.isConnected
+        }
+    }
+
     override fun onBackPressed() {
         Toast.makeText(this, "Close", Toast.LENGTH_SHORT).show()
         super.onBackPressed()
     }
 }
-
