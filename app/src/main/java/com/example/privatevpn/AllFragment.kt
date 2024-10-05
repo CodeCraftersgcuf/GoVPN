@@ -1,10 +1,13 @@
 package com.example.privatevpn
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -86,7 +89,7 @@ class AllFragment : Fragment() {
 
             // Add onClick listener for country
             countryLayout.setOnClickListener {
-                toggleCityList(countryLayout, serversArray, countryName, flagUrl)
+                toggleCityList(countryLayout, serversArray, countryName, flagUrl, dropdownIcon)
             }
 
             // Add country layout to the parent
@@ -94,17 +97,38 @@ class AllFragment : Fragment() {
         }
     }
 
-    private fun toggleCityList(countryLayout: LinearLayout, serversArray: JSONArray, countryName: String, flagUrl: String) {
+    private fun toggleCityList(
+        countryLayout: LinearLayout,
+        serversArray: JSONArray,
+        countryName: String,
+        flagUrl: String,
+        dropdownIcon: ImageView
+    ) {
         val cityListLayout = countryLayout.findViewById<LinearLayout>(R.id.cityListLayout)
         if (cityListLayout.visibility == View.GONE) {
             cityListLayout.visibility = View.VISIBLE
             populateCityList(cityListLayout, serversArray, countryName, flagUrl)
+            animateDropdownIcon(dropdownIcon, 0f, 180f) // Rotate to 180 degrees when expanded
         } else {
             cityListLayout.visibility = View.GONE
+            animateDropdownIcon(dropdownIcon, 180f, 0f) // Rotate back to 0 degrees when collapsed
         }
     }
 
-    private fun populateCityList(cityListLayout: LinearLayout, serversArray: JSONArray, countryName: String, flagUrl: String) {
+    private fun animateDropdownIcon(dropdownIcon: ImageView, from: Float, to: Float) {
+        val rotateAnimation = dropdownIcon.animate()
+            .rotation(to)
+            .setInterpolator(AccelerateDecelerateInterpolator())
+            .setDuration(300)
+        rotateAnimation.start()
+    }
+
+    private fun populateCityList(
+        cityListLayout: LinearLayout,
+        serversArray: JSONArray,
+        countryName: String,
+        flagUrl: String
+    ) {
         cityListLayout.removeAllViews() // Clear previous city list
         for (j in 0 until serversArray.length()) {
             val serverObject = serversArray.getJSONObject(j)
@@ -126,6 +150,24 @@ class AllFragment : Fragment() {
     }
 
     private fun requestOvpnFile(serverId: Int, countryName: String, flagUrl: String) {
+        // Check if the VPN is connected
+        val sharedPreferences =
+            requireActivity().getSharedPreferences("vpnPrefs", Context.MODE_PRIVATE)
+        val isConnected = sharedPreferences.getBoolean("isConnected", false)
+
+        Log.d("VPNStatus", "Is connected: $isConnected")
+
+        if (isConnected) {
+            if (isAdded) {
+                Toast.makeText(
+                    context,
+                    "Please disconnect before connecting to another server",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            return // Exit the function if already connected
+        }
+
         val vpnUsername = "12312" // This could be dynamically fetched if needed
         val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=$vpnUsername"
 

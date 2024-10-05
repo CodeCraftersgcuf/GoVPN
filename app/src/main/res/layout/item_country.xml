@@ -7,39 +7,72 @@
     android:clickable="true"
     android:focusable="true">
 
+    <!-- Country and Dropdown Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@drawable/bottom_border"
+        android:paddingBottom="10dp"
         android:gravity="center_vertical">
 
+        <!-- Flag Icon -->
         <ImageView
             android:id="@+id/flagIcon"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:layout_marginEnd="10dp" />
 
+        <!-- Country Name -->
         <TextView
             android:id="@+id/countryName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textSize="16sp"
+            android:textColor="@color/white"
             android:layout_marginStart="10dp"
-            android:textColor="@color/white" />
+            android:text="Country Name" />
 
+        <!-- Dropdown Icon -->
         <ImageView
             android:id="@+id/dropdownIcon"
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/dropdown" />
+            android:src="@drawable/dropdown"
+            android:layout_marginEnd="10dp" />
     </LinearLayout>
 
+    <!-- Server List (Initially Hidden) -->
     <LinearLayout
         android:id="@+id/cityListLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:visibility="gone" />
+        android:visibility="gone"
+        android:paddingTop="5dp">
+
+        <!-- Example Server Item -->
+        <TextView
+            android:id="@+id/serverLocation1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="40dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="Server Location 1"
+            android:textSize="14sp"
+            android:textColor="@color/white" />
+
+        <!-- Example Server Item -->
+        <TextView
+            android:id="@+id/serverLocation2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="40dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="Server Location 2"
+            android:textSize="14sp"
+            android:textColor="@color/white" />
+    </LinearLayout>
 </LinearLayout>

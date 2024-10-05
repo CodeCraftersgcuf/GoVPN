@@ -1,6 +1,8 @@
 package com.example.privatevpn
 
+import android.app.ActivityManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
@@ -111,6 +113,30 @@ class MainActivity : AppCompatActivity() {
         val countryName = intent.getStringExtra("COUNTRY_NAME") ?: "United States"
         val flagUrl = intent.getStringExtra("FLAG_URL") ?: "" // Assuming flagUrl is passed correctly
         updateCountrySelector(countryName, flagUrl)
+
+        // Check if already connected to VPN
+        checkVPNConnection()
+    }
+
+    private fun checkVPNConnection() {
+        // Add logic to check if the VPN is already connected
+        val vpnServiceIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
+        if (isServiceRunning(vpnServiceIntent)) {
+            // If the VPN is connected, redirect to ConnectActivity
+            val intent = Intent(this, ConnectActivity::class.java)
+            startActivity(intent)
+            finish() // Close MainActivity so back button doesn't go back to it
+        }
+    }
+
+    private fun isServiceRunning(serviceIntent: Intent): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+            if (service.service.className == serviceIntent.component?.className) {
+                return true
+            }
+        }
+        return false
     }
 
     fun updateCountrySelector(countryName: String, flagUrl: String) {
@@ -189,7 +215,7 @@ class MainActivity : AppCompatActivity() {
                     val intent = Intent(this, ConnectActivity::class.java)
                     startActivity(intent)
                     finish()  // Close MainActivity so back button doesn't go back to it
-                }, 2000)  // 2000 milliseconds = 2 seconds
+                }, 1000)  // 2000 milliseconds = 2 seconds
 
             } catch (e: Exception) {
                 Log.e("VPN", "Failed to start VPN", e)
@@ -197,8 +223,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-
 
     private fun disconnectVPN() {
         try {
@@ -232,3 +256,4 @@ class MainActivity : AppCompatActivity() {
         super.onBackPressed()
     }
 }
+

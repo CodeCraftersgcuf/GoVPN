@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import okhttp3.*
 import java.io.IOException
 import android.os.CountDownTimer
+import androidx.appcompat.app.AlertDialog
 import de.hdodenhof.circleimageview.CircleImageView
 import org.json.JSONObject
 
@@ -83,8 +84,9 @@ class ConnectActivity : AppCompatActivity() {
 
     private fun setOnClickListeners() {
         profile_image.setOnClickListener {
-            val intent = Intent(this, AllServersActivity::class.java)
-            startActivity(intent)
+//            val intent = Intent(this, AllServersActivity::class.java)
+//            startActivity(intent)
+        Toast.makeText(this, "Please disconnect VPN before Changing Server", Toast.LENGTH_SHORT).show()
         }
 
         priemums.setOnClickListener {
@@ -98,7 +100,7 @@ class ConnectActivity : AppCompatActivity() {
         }
 
         disconnect.setOnClickListener {
-            disconnectVPN()
+            showDisconnectDialog()
         }
 
         // Add 60 minutes to the timer when the button is clicked
@@ -196,6 +198,54 @@ class ConnectActivity : AppCompatActivity() {
             }
         })
     }
+    private fun showDisconnectDialog() {
+        // Create a custom dialog
+        val dialogView = layoutInflater.inflate(R.layout.dialog_disconnect, null)
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        // Initialize views in the dialog
+        val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
+        val confirmButton = dialogView.findViewById<Button>(R.id.confirmButton)
+
+        // Set countdown timer for the confirm button
+        val countdownTimeInMillis: Long = 5000 // 5 seconds countdown
+        val countDownTimer = object : CountDownTimer(countdownTimeInMillis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsRemaining = millisUntilFinished / 1000
+                confirmButton.text = String.format("00:%02d", secondsRemaining)
+            }
+
+            override fun onFinish() {
+                // Change the text to "Disconnect" once the countdown finishes
+                confirmButton.text = "Disconnect"
+                confirmButton.isEnabled = true // Enable the button to be clicked after the countdown
+            }
+        }
+        countDownTimer.start()
+
+        // Disable the confirm button initially so disconnection can't happen until timer finishes
+        confirmButton.isEnabled = false
+
+        // Confirm button click listener
+        confirmButton.setOnClickListener {
+            // If the button says "Disconnect", perform the disconnection
+            if (confirmButton.text == "Disconnect") {
+                disconnectVPN() // Call the disconnection method
+                dialog.dismiss() // Close the dialog
+            }
+        }
+
+        // Cancel button click listener
+        cancelButton.setOnClickListener {
+            countDownTimer.cancel()  // Stop the countdown
+            dialog.dismiss()         // Close the dialog
+        }
+
+        dialog.show()  // Show the dialog
+    }
 
     private fun disconnectVPN() {
         try {
@@ -207,13 +257,16 @@ class ConnectActivity : AppCompatActivity() {
             disconnectIntent.action = de.blinkt.openvpn.core.OpenVPNService.DISCONNECT_VPN
             startService(disconnectIntent)
 
-            // Save the remaining time after disconnecting
-            sharedPreferences.edit().putLong("timeLeftInMillis", timeLeftInMillis).apply()
+            // Save the remaining time after disconnecting, ignoring milliseconds
+            val remainingMinutesInMillis = (timeLeftInMillis / 1000 / 60) * 60 * 1000  // Rounds down to the nearest minute
+            sharedPreferences.edit().putLong("timeLeftInMillis", remainingMinutesInMillis).apply()
 
             Toast.makeText(this, "VPN Disconnected", Toast.LENGTH_SHORT).show()
+
+            // Optionally, navigate back to MainActivity
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
-            finish()  // Close ConnectActivity so it doesn't appear in the backstack
+            finish()  // Close ConnectActivity so it doesn't appear in the back stack
 
         } catch (e: Exception) {
             Toast.makeText(this, "Failed to disconnect VPN", Toast.LENGTH_SHORT).show()
