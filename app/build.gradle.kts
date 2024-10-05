@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.play.services.ads.lite)
+    implementation(libs.androidx.espresso.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -66,6 +67,8 @@ dependencies {
 
     // Add the OpenVPN .aar file directly from the libs folder
     implementation(files("libs/ics-openvpn-0.7.22.aar"))
+
+    implementation("com.google.android.gms:play-services-ads:23.4.0")
 
 
 

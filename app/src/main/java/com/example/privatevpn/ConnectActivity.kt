@@ -184,7 +184,6 @@ class ConnectActivity : AppCompatActivity() {
 
         Toast.makeText(this, "Added 60 minutes to the session", Toast.LENGTH_SHORT).show()
     }
-
     private fun fetchIpAddress() {
         val client = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
@@ -194,41 +193,51 @@ class ConnectActivity : AppCompatActivity() {
 
         Handler(Looper.getMainLooper()).postDelayed({
             val request = Request.Builder()
-                .url("https://ipinfo.io/json")
+                .url("https://api64.ipify.org?format=json") // Alternative API
                 .build()
 
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    // Handle failure silently to avoid UI interruption
+                    e.printStackTrace()
+                    runOnUiThread {
+                        ipAddress.text = "Unknown IP (Failure)"
+                    }
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    val responseData = response.body?.string()
-                    response.body?.close()
-                    runOnUiThread {
-                        if (response.isSuccessful && responseData != null) {
-                            try {
-                                val jsonObject = JSONObject(responseData)
-                                val ip = jsonObject.getString("ip")
-                                ipAddress.text = "IP: $ip"
+                    response.use {
+                        val responseData = response.body?.string()
+                        println("Response code: ${response.code}")
+                        println("Response body: $responseData")
 
-                                val storedIp = sharedPreferences.getString("storedIp", "0.0.0.0")
-                                if (storedIp == "0.0.0.0") {
-                                    sharedPreferences.edit()
-                                        .putString("storedIp", ip)
-                                        .apply()
+                        runOnUiThread {
+                            if (response.isSuccessful && responseData != null) {
+                                try {
+                                    val jsonObject = JSONObject(responseData)
+                                    val ip = jsonObject.getString("ip")
+                                    ipAddress.text = "IP: $ip"
+
+                                    val storedIp = sharedPreferences.getString("storedIp", "0.0.0.0")
+                                    if (storedIp == "0.0.0.0") {
+                                        sharedPreferences.edit()
+                                            .putString("storedIp", ip)
+                                            .apply()
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    ipAddress.text = "Unknown IP (Exception)"
                                 }
-                            } catch (e: Exception) {
-                                // Handle failure silently
+                            } else {
+                                ipAddress.text = "Unknown IP (Unsuccessful Response)"
                             }
-                        } else {
-                            ipAddress.text = "Unknown IP"
                         }
                     }
                 }
             })
         }, 2000)
     }
+
+
 
     private val ipStatusChecker = object : Runnable {
         override fun run() {

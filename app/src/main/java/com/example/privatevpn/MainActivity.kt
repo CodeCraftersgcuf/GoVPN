@@ -20,6 +20,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.airbnb.lottie.LottieAnimationView
 import com.bumptech.glide.Glide
+import com.google.android.gms.ads.*
+import com.google.android.gms.ads.appopen.AppOpenAd
 import de.blinkt.openvpn.VpnProfile
 import de.blinkt.openvpn.core.ConfigParser
 import de.blinkt.openvpn.core.ProfileManager
@@ -30,24 +32,132 @@ import java.io.InputStreamReader
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
+
     private lateinit var countrySelector: LinearLayout
     private lateinit var premium: ImageView
     private lateinit var toggle: ImageView
     private lateinit var button: LottieAnimationView
     private lateinit var statusTextView: TextView
-
-    private var isConnected = false
     private lateinit var vpnProfile: VpnProfile
     private lateinit var countryNameTextView: TextView
     private lateinit var profileImageView: ImageView
-
     private var isAnimating = false
+    private var isConnected = false
+
+    // App Open Ad
+    private var appOpenAd: AppOpenAd? = null
+    private var isAdShowing = false
+
+    // Banner Ad
+    private lateinit var adView: AdView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialize Google Mobile Ads SDK
+        MobileAds.initialize(this) {}
+
+        // Load and show App Open Ad
+        loadAndShowAppOpenAd()
+
         // Initialize Views
+        initializeViews()
+
+        // Load Banner Ad
+        loadBannerAd()
+
+        // Check for Internet Connectivity
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, "No Internet Connection", Toast.LENGTH_LONG).show()
+        }
+
+        // Set up notification permission check for Android 13+
+        requestNotificationPermission()
+
+        // Button listeners
+        setButtonListeners()
+    }
+
+    private fun loadAndShowAppOpenAd() {
+        val adRequest = AdRequest.Builder().build()
+        AppOpenAd.load(
+            this,
+            "ca-app-pub-1156738411664537/8098654971", // Your Ad Unit ID
+            adRequest,
+            AppOpenAd.APP_OPEN_AD_ORIENTATION_PORTRAIT,
+            object : AppOpenAd.AppOpenAdLoadCallback() {
+                override fun onAdLoaded(ad: AppOpenAd) {
+                    appOpenAd = ad
+                    showAdIfAvailable()
+                }
+
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    Log.e("AdMob", "Failed to load app open ad: ${loadAdError.message}")
+                    // Retry loading the ad after a delay
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        loadAndShowAppOpenAd() // Retry loading the ad after failure
+                    }, 3000) // Retry after 3 seconds
+                }
+            }
+        )
+    }
+
+    private fun showAdIfAvailable() {
+        if (appOpenAd != null && !isAdShowing) {
+            appOpenAd?.show(this)
+            isAdShowing = true
+        }
+    }
+
+    private fun loadBannerAd() {
+        // Find the AdView in the layout (already defined in XML)
+        adView = findViewById(R.id.adView)
+
+        // Load the banner ad
+        val adRequest = AdRequest.Builder().build()
+        adView.loadAd(adRequest)
+
+        // Optionally, listen for ad events
+        adView.adListener = object : AdListener() {
+            override fun onAdLoaded() {
+                // Ad loaded successfully
+                Log.d("AdMob", "Banner ad loaded successfully")
+            }
+
+            override fun onAdFailedToLoad(error: LoadAdError) {
+                // Retry loading the banner ad after failure
+                Log.e("AdMob", "Failed to load banner ad: ${error.message}")
+                Handler(Looper.getMainLooper()).postDelayed({
+                    adView.loadAd(adRequest) // Retry loading after 5 seconds
+                }, 5000)
+            }
+        }
+    }
+
+    // Ensure the banner ad keeps appearing by managing the AdView's lifecycle
+    override fun onPause() {
+        if (::adView.isInitialized) {
+            adView.pause()
+        }
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::adView.isInitialized) {
+            adView.resume()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::adView.isInitialized) {
+            adView.destroy()
+        }
+        super.onDestroy()
+    }
+
+    private fun initializeViews() {
         countrySelector = findViewById(R.id.countrySelector)
         premium = findViewById(R.id.premium)
         toggle = findViewById(R.id.toggle)
@@ -55,19 +165,25 @@ class MainActivity : AppCompatActivity() {
         statusTextView = findViewById(R.id.textView)
         countryNameTextView = findViewById(R.id.countryName)
         profileImageView = findViewById(R.id.profile_image)
+    }
 
-        // Check for Internet Connectivity
-        if (!isNetworkAvailable()) {
-            Toast.makeText(this, "No Internet Connection", Toast.LENGTH_LONG).show()
-        }
-
-        // Check Notification Permission for Android 13+
+    private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 102)
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                    102
+                )
             }
         }
+    }
 
+    private fun setButtonListeners() {
         toggle.setOnClickListener {
             startActivity(Intent(this, sidenavigationActivity::class.java))
         }
@@ -97,9 +213,7 @@ class MainActivity : AppCompatActivity() {
                     statusTextView.text = "Tap to Connect"
                     isAnimating = false
                 }, 100)
-
             } else {
-                // Fetch server ID from intent or default to 1
                 val serverId = intent.getIntExtra("SERVER_ID", 1)
                 fetchOpenVPNProfile(serverId)
                 statusTextView.text = "Connecting..."
@@ -115,23 +229,19 @@ class MainActivity : AppCompatActivity() {
 
         loadSelectedLanguage()
 
-        // Retrieve country data from Intent or default to the United States
         val countryName = intent.getStringExtra("COUNTRY_NAME") ?: "United States"
-        val flagUrl = intent.getStringExtra("FLAG_URL") ?: "" // Assuming flagUrl is passed correctly
+        val flagUrl = intent.getStringExtra("FLAG_URL") ?: ""
         updateCountrySelector(countryName, flagUrl)
 
-        // Check if already connected to VPN
         checkVPNConnection()
     }
 
     private fun checkVPNConnection() {
-        // Add logic to check if the VPN is already connected
         val vpnServiceIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
         if (isServiceRunning(vpnServiceIntent)) {
-            // If the VPN is connected, redirect to ConnectActivity
             val intent = Intent(this, ConnectActivity::class.java)
             startActivity(intent)
-            finish() // Close MainActivity so back button doesn't go back to it
+            finish()
         }
     }
 
@@ -152,17 +262,14 @@ class MainActivity : AppCompatActivity() {
                 .load(flagUrl)
                 .into(profileImageView)
         } else {
-            profileImageView.setImageResource(R.drawable.us) // Replace with your default flag resource
+            profileImageView.setImageResource(R.drawable.us)
         }
     }
 
     private fun fetchOpenVPNProfile(serverId: Int) {
         val client = OkHttpClient()
         val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=12312"
-        val request = Request.Builder()
-            .url(requestUrl)
-            .get()
-            .build()
+        val request = Request.Builder().url(requestUrl).get().build()
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -177,9 +284,7 @@ class MainActivity : AppCompatActivity() {
                     val responseBody = res.body?.string()
                     if (res.isSuccessful && responseBody != null) {
                         Log.d("VPNResponse", "Success: $responseBody")
-                        runOnUiThread {
-                            parseAndStartVPN(responseBody)
-                        }
+                        runOnUiThread { parseAndStartVPN(responseBody) }
                     } else {
                         Log.e("VPNResponse", "Failed: ${res.code}, ${res.message}")
                         runOnUiThread {
@@ -216,13 +321,11 @@ class MainActivity : AppCompatActivity() {
                 VPNLaunchHelper.startOpenVpn(vpnProfile, this)
                 isConnected = true
 
-                // Redirect to ConnectActivity after a delay of 2 seconds
-                Handler().postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     val intent = Intent(this, ConnectActivity::class.java)
                     startActivity(intent)
-                    finish()  // Close MainActivity so back button doesn't go back to it
-                }, 3000)  // 2000 milliseconds = 2 seconds
-
+                    finish()
+                }, 3000)
             } catch (e: Exception) {
                 Log.e("VPN", "Failed to start VPN", e)
                 Toast.makeText(this, "Failed to start VPN", Toast.LENGTH_SHORT).show()
@@ -262,11 +365,7 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val network = connectivityManager.activeNetwork ?: return false
             val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
-            return when {
-                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
-                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
-                else -> false
-            }
+            return activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
         } else {
             val networkInfo = connectivityManager.activeNetworkInfo
             return networkInfo != null && networkInfo.isConnected
