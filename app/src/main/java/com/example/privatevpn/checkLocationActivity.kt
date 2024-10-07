@@ -40,19 +40,17 @@ class checkLocationActivity : AppCompatActivity(), OnMapReadyCallback {
         mapView.getMapAsync(this)
 
         backhome.setOnClickListener {
-//            val intent = Intent(this, sidenavigationActivity::class.java)
-//            startActivity(intent)
-            finish();
-//            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            finish()  // Close the activity and return to the previous screen
         }
 
+        // Fetch IP information and update the UI
         fetchIPInfo()
     }
 
     private fun fetchIPInfo() {
         val client = OkHttpClient()
         val request = Request.Builder()
-            .url("https://ipinfo.io/json") // Fetch IP information from ipinfo.io
+            .url("https://api.ipgeolocation.io/ipgeo?apiKey=d123bf4330a5452187d2939c9760e2cd") // Use your API key here
             .build()
 
         client.newCall(request).enqueue(object : okhttp3.Callback {
@@ -60,6 +58,8 @@ class checkLocationActivity : AppCompatActivity(), OnMapReadyCallback {
                 e.printStackTrace()
                 runOnUiThread {
                     ipAddressTextView.text = "Error fetching IP info"
+                    locationTextView.text = "Error fetching location info"
+                    timezoneTextView.text = "Error fetching timezone info"
                 }
             }
 
@@ -70,15 +70,15 @@ class checkLocationActivity : AppCompatActivity(), OnMapReadyCallback {
                     val jsonData = it.body?.string()
                     val jsonObject = JSONObject(jsonData)
 
+                    // Extract relevant data from the response
                     val ipAddress = jsonObject.getString("ip")
-                    val timezone = jsonObject.getString("timezone")
+                    val timezone = jsonObject.getJSONObject("time_zone").getString("name")
                     val city = jsonObject.getString("city")
-                    val region = jsonObject.getString("region")
-                    val loc = jsonObject.getString("loc") // "loc" is a string in the format "lat,lon"
-                    val latLng = loc.split(",") // Split into latitude and longitude
-                    val latitude = latLng[0].toDouble()
-                    val longitude = latLng[1].toDouble()
+                    val region = jsonObject.getString("state_prov")
+                    val latitude = jsonObject.getString("latitude").toDouble()
+                    val longitude = jsonObject.getString("longitude").toDouble()
 
+                    // Update the UI
                     runOnUiThread {
                         ipAddressTextView.text = ipAddress
                         timezoneTextView.text = timezone
