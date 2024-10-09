@@ -4,14 +4,14 @@
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.BIND_VPN_SERVICE"
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission
+        android:name="android.permission.BIND_VPN_SERVICE"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -26,22 +26,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PrivateVpn"
         tools:targetApi="31">
+        <activity
+            android:name=".SplitTunnelingActivity"
+            android:exported="false" />
         <!-- Google Maps API key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyA52Bt_VkZ83JfA_lrrxZNDOTFBV2Go5IE"
-            />
+            android:value="AIzaSyA52Bt_VkZ83JfA_lrrxZNDOTFBV2Go5IE" />
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-1156738411664537~2249963319"/>
-
-        <!-- Explicit declaration of the VPN service used by OpenVPN -->
-        <service android:name="de.blinkt.openvpn.core.OpenVPNService"
+            android:value="ca-app-pub-1156738411664537~2249963319" /> <!-- Explicit declaration of the VPN service used by OpenVPN -->
+        <service
+            android:name="de.blinkt.openvpn.core.OpenVPNService"
             android:exported="true"
             android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
-                <action android:name="android.net.VpnService"/>
-
+                <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
 
@@ -68,6 +68,7 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -84,4 +85,5 @@
             android:name=".MainActivity"
             android:exported="true" />
     </application>
+
 </manifest>

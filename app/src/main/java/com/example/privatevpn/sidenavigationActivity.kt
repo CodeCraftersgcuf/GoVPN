@@ -14,6 +14,7 @@ lateinit var speedtext: LinearLayout
 lateinit var linearLayout2: LinearLayout
 lateinit var feedback: LinearLayout
 lateinit var buttomSheets: LinearLayout
+lateinit var split_tunneling: LinearLayout
 
 class sidenavigationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +28,7 @@ class sidenavigationActivity : AppCompatActivity() {
         feedback = findViewById(R.id.feedbacks)
         speedtext = findViewById(R.id.speedtext)
         buttomSheets = findViewById(R.id.buttomSheets)
+        split_tunneling = findViewById(R.id.split_tunneling)
 
         // BottomSheetFragment setup
         val bottomsheetFragment = BottomsheetFragment()
@@ -61,6 +63,13 @@ class sidenavigationActivity : AppCompatActivity() {
             val intent = Intent(this, checkLocationActivity::class.java)
             startActivity(intent)
         }
+        split_tunneling.setOnClickListener {
+            // Create an intent to navigate to the SplitTunnelingActivity
+            val intent = Intent(this, SplitTunnelingActivity::class.java)
+            // Start the activity
+            startActivity(intent)
+        }
+
 
         // Subscription activity
         linearLayout2.setOnClickListener {

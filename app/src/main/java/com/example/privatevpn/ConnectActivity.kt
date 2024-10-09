@@ -265,10 +265,12 @@ class ConnectActivity : AppCompatActivity() {
         override fun run() {
             fetchAndCheckIpAddress()
             if (!isVpnDisconnected) {
-                handler.postDelayed(this, ipCheckInterval)
+                // Adding a 2-second delay
+                handler.postDelayed(this, ipCheckInterval + 5000)  // Delay of 2 seconds added
             }
         }
     }
+
 
     private fun fetchAndCheckIpAddress() {
         val client = OkHttpClient.Builder()
