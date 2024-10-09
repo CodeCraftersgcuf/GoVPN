@@ -197,35 +197,26 @@ class MainActivity : AppCompatActivity() {
         }
 
         button.setOnClickListener {
-            if (isAnimating) return@setOnClickListener
+            if (isAnimating) return@setOnClickListener // Prevent double-clicks during animation
 
             isAnimating = true
             button.loop(true)
             button.playAnimation()
 
-            if (isConnected) {
-                disconnectVPN()
-                statusTextView.text = "Disconnecting..."
+            // Start connecting to the VPN
+            val serverId = intent.getIntExtra("SERVER_ID", 1)
+            fetchOpenVPNProfile(serverId) // Fetch the VPN profile based on serverId
+            statusTextView.text = "Connecting..."
 
-                Handler(Looper.getMainLooper()).postDelayed({
-                    button.cancelAnimation()
-                    button.setProgress(1f)
-                    statusTextView.text = "Tap to Connect"
-                    isAnimating = false
-                }, 100)
-            } else {
-                val serverId = intent.getIntExtra("SERVER_ID", 1)
-                fetchOpenVPNProfile(serverId)
-                statusTextView.text = "Connecting..."
-
-                Handler(Looper.getMainLooper()).postDelayed({
-                    button.cancelAnimation()
-                    button.setProgress(1f)
-                    statusTextView.text = "Tap again to Connect."
-                    isAnimating = false
-                }, 5200)
-            }
+            // Set the animation and prevent button interaction for 8 seconds
+            Handler(Looper.getMainLooper()).postDelayed({
+                button.cancelAnimation() // Stop the animation
+                button.setProgress(1f) // Reset the animation progress to the end
+                statusTextView.text = "Tap again to Connect." // Update status text
+                isAnimating = false // Allow the button to be pressed again
+            }, 5000) // 8-second animation and delay
         }
+
 
         loadSelectedLanguage()
 

@@ -27,7 +27,8 @@ lateinit var ipAddress: TextView
 lateinit var materialButton: Button
 
 class ConnectActivity : AppCompatActivity() {
-
+    private var startTime: Long = 0 // Variable to store connection start time
+    private var countryName: String = "" // To store the country name
     private lateinit var timer: CountDownTimer
     private val thirtyMinutesInMillis: Long = 30 * 60 * 1000  // 30 minutes in milliseconds
     private var timeLeftInMillis: Long = thirtyMinutesInMillis
@@ -56,7 +57,17 @@ class ConnectActivity : AppCompatActivity() {
         ipAddress = findViewById(R.id.ipAddress)
         materialButton = findViewById(R.id.materialButton)
 
+        // Initialize sharedPreferences before use
         sharedPreferences = getSharedPreferences("vpnPrefs", MODE_PRIVATE)
+
+        // Get saved start time from sharedPreferences, or set it to the current time if not present
+        val savedStartTime = sharedPreferences.getLong("vpnStartTime", 0L)
+        startTime = if (savedStartTime != 0L) savedStartTime else System.currentTimeMillis()
+
+        // Save the start time for the current VPN session if it hasn't been saved yet
+        if (savedStartTime == 0L) {
+            sharedPreferences.edit().putLong("vpnStartTime", startTime).apply()
+        }
 
         // Get saved time and timer state
         timeLeftInMillis = sharedPreferences.getLong("timeLeftInMillis", thirtyMinutesInMillis)
@@ -184,6 +195,7 @@ class ConnectActivity : AppCompatActivity() {
 
         Toast.makeText(this, "Added 60 minutes to the session", Toast.LENGTH_SHORT).show()
     }
+
     private fun fetchIpAddress() {
         val client = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
@@ -193,7 +205,7 @@ class ConnectActivity : AppCompatActivity() {
 
         Handler(Looper.getMainLooper()).postDelayed({
             val request = Request.Builder()
-                .url("https://api64.ipify.org?format=json") // Alternative API
+                .url("https://api64.ipify.org?format=json") // Alternative API to get IP address
                 .build()
 
             client.newCall(request).enqueue(object : Callback {
@@ -217,6 +229,9 @@ class ConnectActivity : AppCompatActivity() {
                                     val ip = jsonObject.getString("ip")
                                     ipAddress.text = "IP: $ip"
 
+                                    // Fetch the country information based on the IP
+                                    fetchCountryInfo(ip)
+
                                     val storedIp = sharedPreferences.getString("storedIp", "0.0.0.0")
                                     if (storedIp == "0.0.0.0") {
                                         sharedPreferences.edit()
@@ -237,7 +252,14 @@ class ConnectActivity : AppCompatActivity() {
         }, 2000)
     }
 
-
+    // Fetch country name based on IP
+    private fun fetchCountryInfo(ip: String) {
+        countryName = when (ip) {
+            "157.245.83.117" -> "United States"
+            "139.59.171.30" -> "United Kingdom"
+            else -> "Unknown"
+        }
+    }
 
     private val ipStatusChecker = object : Runnable {
         override fun run() {
@@ -350,39 +372,50 @@ class ConnectActivity : AppCompatActivity() {
 
     private fun disconnectVPN() {
         try {
+            // Stop any running timers and handlers
             stopTimer()
             handler.removeCallbacksAndMessages(null)
             secondaryHandler.removeCallbacksAndMessages(null)
 
+            // Send an intent to disconnect the VPN using the OpenVPNService
             val disconnectIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
             disconnectIntent.action = de.blinkt.openvpn.core.OpenVPNService.DISCONNECT_VPN
             startService(disconnectIntent)
 
-            val remainingMinutesInMillis = (timeLeftInMillis / 1000 / 60) * 60 * 1000
-            sharedPreferences.edit()
-                .putLong("timeLeftInMillis", remainingMinutesInMillis)
-                .putBoolean("isTimerRunning", false)
-                .putBoolean("isConnected", false)
-                .apply()
-
-            Toast.makeText(this, "VPN Disconnected...", Toast.LENGTH_SHORT).show()
-
+            // Add a short delay to ensure VPN disconnection is processed before moving to DisconnectActivity
             Handler(Looper.getMainLooper()).postDelayed({
-                redirectToMainActivity()
-            }, 1000)
+                // Get start time from SharedPreferences
+                val startTime = sharedPreferences.getLong("vpnStartTime", 0L)
+                if (startTime == 0L) {
+                    // Handle the case where start time wasn't properly recorded
+                    Toast.makeText(this, "Error calculating VPN duration", Toast.LENGTH_SHORT).show()
+                    return@postDelayed
+                }
+
+                // Calculate connection duration
+                val currentTime = System.currentTimeMillis()
+                val durationMillis = currentTime - startTime
+
+                // Reset the start time for future sessions
+                sharedPreferences.edit().putLong("vpnStartTime", 0L).apply()
+
+                // Prepare to redirect to DisconnectActivity
+                val intent = Intent(this, DisconnectActivity::class.java)
+                intent.putExtra("IP_ADDRESS", ipAddress.text.toString().substringAfter(": "))
+                intent.putExtra("DURATION_MILLIS", durationMillis) // Pass duration in milliseconds
+                intent.putExtra("COUNTRY_NAME", countryName)
+                startActivity(intent)
+
+                finish() // Finish ConnectActivity if you don't want to return to it
+            }, 1000) // 1-second delay to ensure VPN disconnection is processed
+
         } catch (e: Exception) {
             // Handle failure silently
+            e.printStackTrace()
         }
     }
 
-    private fun redirectToMainActivity() {
-        if (!isFinishing) {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
-            finish()
-        }
-    }
+
 
     override fun onDestroy() {
         super.onDestroy()

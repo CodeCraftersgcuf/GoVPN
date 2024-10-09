@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
@@ -9,7 +10,7 @@
     tools:context=".DisconnectActivity"
     android:background="@drawable/bg">
 
-
+    <!-- Back Button to Home -->
     <ImageView
         android:id="@+id/back_home"
         android:layout_width="30dp"
@@ -23,19 +24,7 @@
         app:layout_constraintVertical_bias="0.00999999"
         app:tint="@color/white" />
 
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/canada"
-        android:textColor="@color/white"
-        android:textSize="20sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@+id/profile_image"
-        app:layout_constraintStart_toStartOf="@+id/profile_image"
-        app:layout_constraintTop_toBottomOf="@+id/profile_image"
-        app:layout_constraintVertical_bias="0.036" />
-
+    <!-- Connection Report Text -->
     <TextView
         android:id="@+id/textView3"
         android:layout_width="wrap_content"
@@ -51,6 +40,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.00999999" />
 
+    <!-- Country Flag -->
     <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/profile_image"
         android:layout_width="80dp"
@@ -63,6 +53,21 @@
         app:layout_constraintTop_toBottomOf="@+id/textView3"
         app:layout_constraintVertical_bias="0.11" />
 
+    <!-- Country Name -->
+    <TextView
+        android:id="@+id/countryNameTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Canada"
+    android:textColor="@color/white"
+    android:textSize="20sp"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="@+id/profile_image"
+    app:layout_constraintStart_toStartOf="@+id/profile_image"
+    app:layout_constraintTop_toBottomOf="@+id/profile_image"
+    app:layout_constraintVertical_bias="0.036" />
+
+    <!-- Clock Icon for Duration -->
     <ImageView
         android:layout_width="30dp"
         android:layout_height="30dp"
@@ -75,20 +80,22 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.372" />
 
+    <!-- Session Duration Text -->
     <TextView
+        android:id="@+id/durationTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/duration"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.145"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.37" />
+        android:text="00:00:00"
+    android:textColor="@color/white"
+    android:textSize="16sp"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="1.0"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintVertical_bias="0.375" />
 
-
+    <!-- Location Icon for IP Address -->
     <ImageView
         android:layout_width="30dp"
         android:layout_height="30dp"
@@ -101,19 +108,22 @@
         app:layout_constraintVertical_bias="0.452"
         app:tint="@color/buttonicon" />
 
+    <!-- IP Address Text -->
     <TextView
+        android:id="@+id/ipAddressTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/ip_address"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.145"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.449" />
+        android:text="51.83.141.187"
+    android:textColor="@color/white"
+    android:textSize="16sp"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="1.0"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintVertical_bias="0.453" />
 
+    <!-- Signal Icon for Connection Strength -->
     <ImageView
         android:layout_width="30dp"
         android:layout_height="30dp"
@@ -126,6 +136,7 @@
         app:layout_constraintVertical_bias="0.533"
         app:tint="@color/buttonicon" />
 
+    <!-- Connection Strength Label -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -139,44 +150,19 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.531" />
 
-
+    <!-- Connection Strength Value -->
     <TextView
+        android:id="@+id/connectionStrengthTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/high"
-        android:textColor="@color/white"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.535" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="51:83:141:187"
-        android:textColor="@color/white"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.453" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="00:00:00"
-        android:textColor="@color/white"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.375" />
+        android:text="High"
+    android:textColor="@color/white"
+    android:textSize="16sp"
+    app:layout_constraintBottom_toBottomOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="1.0"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintVertical_bias="0.535" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
