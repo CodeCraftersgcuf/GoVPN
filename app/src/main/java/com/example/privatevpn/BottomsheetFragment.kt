@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -32,13 +33,14 @@ class BottomsheetFragment : BottomSheetDialogFragment() {
         sharedPreferences = requireActivity().getSharedPreferences("app_language", Context.MODE_PRIVATE)
 
         // Load and set the current selected language
-        loadSelectedLanguage()
+        loadSelectedLanguage(view)
 
-        // Set up click listeners for each language TextView
+        // Set up click listeners for each language TextView and CheckBox
         setupLanguageClickListeners(view)
     }
 
     private fun setupLanguageClickListeners(view: View) {
+        // Find TextViews and CheckBoxes
         val textEnglish: TextView = view.findViewById(R.id.textEnglish)
         val textAfrikaans: TextView = view.findViewById(R.id.textAfrikaans)
         val textArabic: TextView = view.findViewById(R.id.textArabic)
@@ -64,36 +66,99 @@ class BottomsheetFragment : BottomSheetDialogFragment() {
         val textTurkish: TextView = view.findViewById(R.id.textTurkish)
         val textVietnamese: TextView = view.findViewById(R.id.textVietnamese)
 
-        // Set click listeners for each language option
-        textEnglish.setOnClickListener { changeLanguage("en", "English") }
-        textAfrikaans.setOnClickListener { changeLanguage("af", "Afrikaans") }
-        textArabic.setOnClickListener { changeLanguage("ar", "Arabic") }
-        textChinese.setOnClickListener { changeLanguage("zh", "Chinese") }
-        textCzech.setOnClickListener { changeLanguage("cs", "Czech") }
-        textDanish.setOnClickListener { changeLanguage("da", "Danish") }
-        textDutch.setOnClickListener { changeLanguage("nl", "Dutch") }
-        textFrench.setOnClickListener { changeLanguage("fr", "French") }
-        textGerman.setOnClickListener { changeLanguage("de", "German") }
-        textGreek.setOnClickListener { changeLanguage("el", "Greek") }
-        textHindi.setOnClickListener { changeLanguage("hi", "Hindi") }
-        textIndonesian.setOnClickListener { changeLanguage("in", "Indonesian") }
-        textItalian.setOnClickListener { changeLanguage("it", "Italian") }
-        textJapanese.setOnClickListener { changeLanguage("ja", "Japanese") }
-        textMalay.setOnClickListener { changeLanguage("ms", "Malay") }
-        textKorean.setOnClickListener { changeLanguage("ko", "Korean") }
-        textNorwegian.setOnClickListener { changeLanguage("no", "Norwegian") }
-        textPersian.setOnClickListener { changeLanguage("fa", "Persian") }
-        textPortuguese.setOnClickListener { changeLanguage("pt", "Portuguese") }
-        textRussian.setOnClickListener { changeLanguage("ru", "Russian") }
-        textSpanish.setOnClickListener { changeLanguage("es", "Spanish") }
-        textThai.setOnClickListener { changeLanguage("th", "Thai") }
-        textTurkish.setOnClickListener { changeLanguage("tr", "Turkish") }
-        textVietnamese.setOnClickListener { changeLanguage("vi", "Vietnamese") }
+        val checkBoxEnglish: CheckBox = view.findViewById(R.id.checkboxEnglish)
+        val checkBoxAfrikaans: CheckBox = view.findViewById(R.id.checkboxAfrikaans)
+        val checkBoxArabic: CheckBox = view.findViewById(R.id.checkboxArabic)
+        val checkBoxChinese: CheckBox = view.findViewById(R.id.checkboxChinese)
+        val checkBoxCzech: CheckBox = view.findViewById(R.id.checkboxCzech)
+        val checkBoxDanish: CheckBox = view.findViewById(R.id.checkboxDanish)
+        val checkBoxDutch: CheckBox = view.findViewById(R.id.checkboxDutch)
+        val checkBoxFrench: CheckBox = view.findViewById(R.id.checkboxFrench)
+        val checkBoxGerman: CheckBox = view.findViewById(R.id.checkboxGerman)
+        val checkBoxGreek: CheckBox = view.findViewById(R.id.checkboxGreek)
+        val checkBoxHindi: CheckBox = view.findViewById(R.id.checkboxHindi)
+        val checkBoxIndonesian: CheckBox = view.findViewById(R.id.checkboxIndonesian)
+        val checkBoxItalian: CheckBox = view.findViewById(R.id.checkboxItalian)
+        val checkBoxJapanese: CheckBox = view.findViewById(R.id.checkboxJapanese)
+        val checkBoxMalay: CheckBox = view.findViewById(R.id.checkboxMalay)
+        val checkBoxKorean: CheckBox = view.findViewById(R.id.checkboxKorean)
+        val checkBoxNorwegian: CheckBox = view.findViewById(R.id.checkboxNorwegian)
+        val checkBoxPersian: CheckBox = view.findViewById(R.id.checkboxPersian)
+        val checkBoxPortuguese: CheckBox = view.findViewById(R.id.checkboxPortuguese)
+        val checkBoxRussian: CheckBox = view.findViewById(R.id.checkboxRussian)
+        val checkBoxSpanish: CheckBox = view.findViewById(R.id.checkboxSpanish)
+        val checkBoxThai: CheckBox = view.findViewById(R.id.checkboxThai)
+        val checkBoxTurkish: CheckBox = view.findViewById(R.id.checkboxTurkish)
+        val checkBoxVietnamese: CheckBox = view.findViewById(R.id.checkboxVietnamese)
+
+        // Set click listeners for TextViews and CheckBoxes (linked together)
+        setClickListener(textEnglish, checkBoxEnglish, "en", "English")
+        setClickListener(textAfrikaans, checkBoxAfrikaans, "af", "Afrikaans")
+        setClickListener(textArabic, checkBoxArabic, "ar", "Arabic")
+        setClickListener(textChinese, checkBoxChinese, "zh", "Chinese")
+        setClickListener(textCzech, checkBoxCzech, "cs", "Czech")
+        setClickListener(textDanish, checkBoxDanish, "da", "Danish")
+        setClickListener(textDutch, checkBoxDutch, "nl", "Dutch")
+        setClickListener(textFrench, checkBoxFrench, "fr", "French")
+        setClickListener(textGerman, checkBoxGerman, "de", "German")
+        setClickListener(textGreek, checkBoxGreek, "el", "Greek")
+        setClickListener(textHindi, checkBoxHindi, "hi", "Hindi")
+        setClickListener(textIndonesian, checkBoxIndonesian, "in", "Indonesian")
+        setClickListener(textItalian, checkBoxItalian, "it", "Italian")
+        setClickListener(textJapanese, checkBoxJapanese, "ja", "Japanese")
+        setClickListener(textMalay, checkBoxMalay, "ms", "Malay")
+        setClickListener(textKorean, checkBoxKorean, "ko", "Korean")
+        setClickListener(textNorwegian, checkBoxNorwegian, "no", "Norwegian")
+        setClickListener(textPersian, checkBoxPersian, "fa", "Persian")
+        setClickListener(textPortuguese, checkBoxPortuguese, "pt", "Portuguese")
+        setClickListener(textRussian, checkBoxRussian, "ru", "Russian")
+        setClickListener(textSpanish, checkBoxSpanish, "es", "Spanish")
+        setClickListener(textThai, checkBoxThai, "th", "Thai")
+        setClickListener(textTurkish, checkBoxTurkish, "tr", "Turkish")
+        setClickListener(textVietnamese, checkBoxVietnamese, "vi", "Vietnamese")
     }
 
-    private fun loadSelectedLanguage() {
+    // Set click listeners for both TextView and CheckBox to change the language
+    private fun setClickListener(textView: TextView, checkBox: CheckBox, languageCode: String, languageName: String) {
+        val clickListener = View.OnClickListener {
+            changeLanguage(languageCode, languageName)
+            checkBox.isChecked = true // Update the checkbox state
+        }
+        textView.setOnClickListener(clickListener)
+        checkBox.setOnClickListener(clickListener)
+    }
+
+    private fun loadSelectedLanguage(view: View) {
         // Load the selected language from SharedPreferences
         val selectedLanguage = sharedPreferences.getString("selected_language", "en") // Default to English
+
+        // Automatically check the selected language's CheckBox
+        when (selectedLanguage) {
+            "en" -> view.findViewById<CheckBox>(R.id.checkboxEnglish).isChecked = true
+            "af" -> view.findViewById<CheckBox>(R.id.checkboxAfrikaans).isChecked = true
+            "ar" -> view.findViewById<CheckBox>(R.id.checkboxArabic).isChecked = true
+            "zh" -> view.findViewById<CheckBox>(R.id.checkboxChinese).isChecked = true
+            "cs" -> view.findViewById<CheckBox>(R.id.checkboxCzech).isChecked = true
+            "da" -> view.findViewById<CheckBox>(R.id.checkboxDanish).isChecked = true
+            "nl" -> view.findViewById<CheckBox>(R.id.checkboxDutch).isChecked = true
+            "fr" -> view.findViewById<CheckBox>(R.id.checkboxFrench).isChecked = true
+            "de" -> view.findViewById<CheckBox>(R.id.checkboxGerman).isChecked = true
+            "el" -> view.findViewById<CheckBox>(R.id.checkboxGreek).isChecked = true
+            "hi" -> view.findViewById<CheckBox>(R.id.checkboxHindi).isChecked = true
+            "in" -> view.findViewById<CheckBox>(R.id.checkboxIndonesian).isChecked = true
+            "it" -> view.findViewById<CheckBox>(R.id.checkboxItalian).isChecked = true
+            "ja" -> view.findViewById<CheckBox>(R.id.checkboxJapanese).isChecked = true
+            "ms" -> view.findViewById<CheckBox>(R.id.checkboxMalay).isChecked = true
+            "ko" -> view.findViewById<CheckBox>(R.id.checkboxKorean).isChecked = true
+            "no" -> view.findViewById<CheckBox>(R.id.checkboxNorwegian).isChecked = true
+            "fa" -> view.findViewById<CheckBox>(R.id.checkboxPersian).isChecked = true
+            "pt" -> view.findViewById<CheckBox>(R.id.checkboxPortuguese).isChecked = true
+            "ru" -> view.findViewById<CheckBox>(R.id.checkboxRussian).isChecked = true
+            "es" -> view.findViewById<CheckBox>(R.id.checkboxSpanish).isChecked = true
+            "th" -> view.findViewById<CheckBox>(R.id.checkboxThai).isChecked = true
+            "tr" -> view.findViewById<CheckBox>(R.id.checkboxTurkish).isChecked = true
+            "vi" -> view.findViewById<CheckBox>(R.id.checkboxVietnamese).isChecked = true
+        }
 
         // Set the locale based on the selected language
         setLocale(selectedLanguage ?: "en")
