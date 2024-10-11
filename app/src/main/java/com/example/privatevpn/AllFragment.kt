@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import okhttp3.*
 import org.json.JSONArray
+import org.json.JSONException
 import java.io.IOException
 
 class AllFragment : Fragment() {
@@ -35,40 +36,29 @@ class AllFragment : Fragment() {
         countryListLayout = view.findViewById(R.id.countryListLayout)
         loadingIndicator = view.findViewById(R.id.loadingIndicator) // Initialize ProgressBar
 
+        // Get the passed server data from the Bundle
+        val serverData = arguments?.getString("SERVER_DATA")
+
         // Show loading indicator
         loadingIndicator.visibility = View.VISIBLE
 
-        // Fetch countries and cities data from the API immediately
-        fetchCountries()
+        // Populate the country list using the passed server data
+        if (serverData != null) {
+            try {
+                val data = JSONArray(serverData)
+                populateCountryList(data)
+            } catch (e: JSONException) {
+                e.printStackTrace()
+                Toast.makeText(context, "Failed to parse server data", Toast.LENGTH_SHORT).show()
+            } finally {
+                loadingIndicator.visibility = View.GONE // Hide loading indicator
+            }
+        } else {
+            Toast.makeText(context, "No server data received", Toast.LENGTH_SHORT).show()
+            loadingIndicator.visibility = View.GONE // Hide loading indicator
+        }
 
         return view
-    }
-
-    private fun fetchCountries() {
-        val request = Request.Builder()
-            .url("https://govpn.ai/api/servers/")
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-                activity?.runOnUiThread {
-                    Toast.makeText(context, "Failed to load data", Toast.LENGTH_SHORT).show()
-                    loadingIndicator.visibility = View.GONE // Hide loading indicator
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.body?.let { responseBody ->
-                    val data = JSONArray(responseBody.string())
-                    activity?.runOnUiThread {
-                        // Populate UI with country data
-                        populateCountryList(data)
-                        loadingIndicator.visibility = View.GONE // Hide loading indicator after data is loaded
-                    }
-                }
-            }
-        })
     }
 
     private fun populateCountryList(data: JSONArray) {
@@ -151,23 +141,17 @@ class AllFragment : Fragment() {
 
     private fun requestOvpnFile(serverId: Int, countryName: String, flagUrl: String) {
         // Check if the VPN is connected
-        val sharedPreferences =
-            requireActivity().getSharedPreferences("vpnPrefs", Context.MODE_PRIVATE)
+        val sharedPreferences = requireActivity().getSharedPreferences("vpnPrefs", Context.MODE_PRIVATE)
         val isConnected = sharedPreferences.getBoolean("isConnected", false)
-
-        Log.d("VPNStatus", "Is connected: $isConnected")
 
         if (isConnected) {
             if (isAdded) {
-                Toast.makeText(
-                    context,
-                    "Please disconnect before connecting to another server",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Please disconnect before connecting to another server", Toast.LENGTH_SHORT).show()
             }
             return // Exit the function if already connected
         }
 
+        // Request OVPN file for the selected city (serverId)
         val vpnUsername = "12312" // This could be dynamically fetched if needed
         val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=$vpnUsername"
 

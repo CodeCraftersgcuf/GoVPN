@@ -13,21 +13,39 @@ class AllServersActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_all_servers)
 
+        // Receive server data from MainActivity
+        val serverData = intent.getStringExtra("SERVER_DATA")
+
         // Set up the back button behavior
         backs = findViewById(R.id.backs)
         backs.setOnClickListener {
-            finish()  // This will go back to the previous activity in the back stack
+            finish()  // Go back to the previous activity
         }
 
         // Initialize TabLayout and ViewPager
         val tabLayout = findViewById<TabLayout>(R.id.my_tab_layout)
         val viewPager = findViewById<ViewPager>(R.id.my_view_pager)
 
+        // Create a Bundle to pass the server data to fragments
+        val bundle = Bundle()
+        bundle.putString("SERVER_DATA", serverData)
+
         // Set up ViewPager adapter
         val myvpAdapter = MyvpAdapter(supportFragmentManager)
-        myvpAdapter.addFragment(AllFragment(), "All")
-        myvpAdapter.addFragment(StreamingFragment(), "Streaming")
-        myvpAdapter.addFragment(GamingFragment(), "Gaming")
+
+        // Pass the bundle to each fragment
+        val allFragment = AllFragment()
+        allFragment.arguments = bundle
+        myvpAdapter.addFragment(allFragment, "All")
+
+        val streamingFragment = StreamingFragment()
+        streamingFragment.arguments = bundle
+        myvpAdapter.addFragment(streamingFragment, "Streaming")
+
+        val gamingFragment = GamingFragment()
+        gamingFragment.arguments = bundle
+        myvpAdapter.addFragment(gamingFragment, "Gaming")
+
         viewPager.adapter = myvpAdapter
 
         // Link TabLayout with ViewPager

@@ -51,6 +51,9 @@ class MainActivity : AppCompatActivity() {
     // Banner Ad
     private lateinit var adView: AdView
 
+    // Data from API
+    private var serverData: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -77,7 +80,52 @@ class MainActivity : AppCompatActivity() {
 
         // Button listeners
         setButtonListeners()
+
+        // Fetch server data from API at the start
+        fetchServersData()
     }
+    private fun fetchServersData() {
+        // Configure OkHttpClient with connection pooling, keep-alive, and timeouts
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)  // Set connection timeout
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)     // Set read timeout
+            .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)    // Set write timeout
+            .retryOnConnectionFailure(true)                             // Retry on failure
+            .connectionPool(ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES)) // Connection pool for faster reuse
+            .addInterceptor { chain ->
+                // Add GZIP compression for faster response
+                val request = chain.request().newBuilder()
+                    .addHeader("Accept-Encoding", "gzip")
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/servers/")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Failed to load server data", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let { responseBody ->
+                    val data = responseBody.string()
+
+                    // Store the server data
+                    serverData = data
+
+                    // Optionally handle caching here if the server supports ETags or Cache-Control headers
+                }
+            }
+        })
+    }
+
 
     private fun loadAndShowAppOpenAd() {
         val adRequest = AdRequest.Builder().build()
@@ -94,7 +142,6 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     Log.e("AdMob", "Failed to load app open ad: ${loadAdError.message}")
-                    // Retry loading the ad after a delay
                     Handler(Looper.getMainLooper()).postDelayed({
                         loadAndShowAppOpenAd() // Retry loading the ad after failure
                     }, 3000) // Retry after 3 seconds
@@ -111,31 +158,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadBannerAd() {
-        // Find the AdView in the layout (already defined in XML)
         adView = findViewById(R.id.adView)
-
-        // Load the banner ad
         val adRequest = AdRequest.Builder().build()
         adView.loadAd(adRequest)
 
-        // Optionally, listen for ad events
         adView.adListener = object : AdListener() {
             override fun onAdLoaded() {
-                // Ad loaded successfully
                 Log.d("AdMob", "Banner ad loaded successfully")
             }
 
             override fun onAdFailedToLoad(error: LoadAdError) {
-                // Retry loading the banner ad after failure
                 Log.e("AdMob", "Failed to load banner ad: ${error.message}")
                 Handler(Looper.getMainLooper()).postDelayed({
-                    adView.loadAd(adRequest) // Retry loading after 5 seconds
+                    adView.loadAd(adRequest)
                 }, 5000)
             }
         }
     }
 
-    // Ensure the banner ad keeps appearing by managing the AdView's lifecycle
     override fun onPause() {
         if (::adView.isInitialized) {
             adView.pause()
@@ -193,37 +233,39 @@ class MainActivity : AppCompatActivity() {
         }
 
         countrySelector.setOnClickListener {
-            startActivity(Intent(this, AllServersActivity::class.java))
+            if (serverData != null) {
+                // Start AllServersActivity and pass the server data
+                val intent = Intent(this, AllServersActivity::class.java)
+                intent.putExtra("SERVER_DATA", serverData) // Pass server data
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Server data not yet loaded", Toast.LENGTH_SHORT).show()
+            }
         }
 
         button.setOnClickListener {
-            if (isAnimating) return@setOnClickListener // Prevent double-clicks during animation
+            if (isAnimating) return@setOnClickListener
 
             isAnimating = true
             button.loop(true)
             button.playAnimation()
 
-            // Start connecting to the VPN
             val serverId = intent.getIntExtra("SERVER_ID", 1)
-            fetchOpenVPNProfile(serverId) // Fetch the VPN profile based on serverId
+            fetchOpenVPNProfile(serverId)
             statusTextView.text = "Connecting..."
 
-            // Set the animation and prevent button interaction for 8 seconds
             Handler(Looper.getMainLooper()).postDelayed({
-                button.cancelAnimation() // Stop the animation
-                button.setProgress(1f) // Reset the animation progress to the end
-                statusTextView.text = "Tap again to Connect." // Update status text
-                isAnimating = false // Allow the button to be pressed again
-            }, 5000) // 8-second animation and delay
+                button.cancelAnimation()
+                button.setProgress(1f)
+                statusTextView.text = "Tap again to Connect."
+                isAnimating = false
+            }, 5000)
         }
 
-
         loadSelectedLanguage()
-
         val countryName = intent.getStringExtra("COUNTRY_NAME") ?: "United States"
         val flagUrl = intent.getStringExtra("FLAG_URL") ?: ""
         updateCountrySelector(countryName, flagUrl)
-
         checkVPNConnection()
     }
 
