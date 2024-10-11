@@ -9,11 +9,10 @@ import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import androidx.fragment.app.Fragment
 import java.util.Locale
 
-class BottomsheetFragment : BottomSheetDialogFragment() {
+class BottomsheetFragment : Fragment() {
 
     private lateinit var sharedPreferences: SharedPreferences
     private var isShowing: Boolean = false // Track if BottomSheet is showing
@@ -182,7 +181,7 @@ class BottomsheetFragment : BottomSheetDialogFragment() {
         requireActivity().recreate()
 
         // Close the BottomSheetFragment
-        dismiss()
+        requireActivity().onBackPressedDispatcher.onBackPressed()
 
         // Reset isShowing to false after a brief delay
         view?.postDelayed({ isShowing = false }, 300) // Delay for 300ms

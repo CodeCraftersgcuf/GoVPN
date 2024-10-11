@@ -4,9 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 
+// Declare your views
 lateinit var closes: ImageView
 lateinit var loactions: LinearLayout
 lateinit var share: LinearLayout
@@ -21,6 +22,7 @@ class sidenavigationActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sidenavigation)
 
+        // Initialize views
         closes = findViewById(R.id.closes)
         loactions = findViewById(R.id.loactions)
         share = findViewById(R.id.sher)
@@ -33,7 +35,10 @@ class sidenavigationActivity : AppCompatActivity() {
         // BottomSheetFragment setup
         val bottomsheetFragment = BottomsheetFragment()
         buttomSheets.setOnClickListener {
-            bottomsheetFragment.show(supportFragmentManager, "")
+            // Begin a fragment transaction to display the BottomsheetFragment
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.main, bottomsheetFragment) // Ensure fragment_container exists in your activity layout
+                .commit()
         }
 
         // Speed test activity
@@ -53,9 +58,9 @@ class sidenavigationActivity : AppCompatActivity() {
             startActivity(shareIntent)
         }
 
-        // Close button: instead of creating a new MainActivity, just finish the current activity
+        // Close button: close the sidenavigationActivity
         closes.setOnClickListener {
-            finish()  // This will close the sidenavigationActivity and return to the previous activity in the back stack
+            finish() // This will close the sidenavigationActivity and return to the previous activity in the back stack
         }
 
         // Location activity
@@ -63,13 +68,12 @@ class sidenavigationActivity : AppCompatActivity() {
             val intent = Intent(this, checkLocationActivity::class.java)
             startActivity(intent)
         }
+
+        // Split Tunneling activity
         split_tunneling.setOnClickListener {
-            // Create an intent to navigate to the SplitTunnelingActivity
             val intent = Intent(this, SplitTunnelingActivity::class.java)
-            // Start the activity
             startActivity(intent)
         }
-
 
         // Subscription activity
         linearLayout2.setOnClickListener {

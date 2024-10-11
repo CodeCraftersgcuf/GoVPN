@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import de.hdodenhof.circleimageview.CircleImageView
 import java.util.concurrent.TimeUnit
 
@@ -17,6 +18,7 @@ class DisconnectActivity : AppCompatActivity() {
     private lateinit var countryNameTextView: TextView
     private lateinit var durationTextView: TextView
     private lateinit var ipAddressTextView: TextView
+    private lateinit var back_to_home: MaterialButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,11 +30,19 @@ class DisconnectActivity : AppCompatActivity() {
         countryNameTextView = findViewById(R.id.countryNameTextView)
         durationTextView = findViewById(R.id.durationTextView)
         ipAddressTextView = findViewById(R.id.ipAddressTextView)
+        back_to_home = findViewById(R.id.back_to_home) // Missing initialization added
 
-        // Set onClickListener for back button
+        // Set onClickListener for backHome ImageView
         backHome.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            finish()
+        }
+
+        // Set onClickListener for back_to_home MaterialButton
+        back_to_home.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
         }
@@ -74,7 +84,6 @@ class DisconnectActivity : AppCompatActivity() {
     }
 
     // Helper function to format the duration from milliseconds to HH:MM:SS
-
     private fun formatDuration(durationMillis: Long): String {
         val hours = TimeUnit.MILLISECONDS.toHours(durationMillis)
         val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) % 60
@@ -87,6 +96,7 @@ class DisconnectActivity : AppCompatActivity() {
         // Return formatted string
         return String.format("%02d:%02d:%02d", hours, minutes, seconds)
     }
+
     // Override the onBackPressed method to remove current activity and navigate to MainActivity
     override fun onBackPressed() {
         super.onBackPressed()
