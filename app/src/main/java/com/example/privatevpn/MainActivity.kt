@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.TrafficStats
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -41,6 +42,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var vpnProfile: VpnProfile
     private lateinit var countryNameTextView: TextView
     private lateinit var profileImageView: ImageView
+    private lateinit var uploadSpeedTextView: TextView
+    private lateinit var downloadSpeedTextView: TextView
     private var isAnimating = false
     private var isConnected = false
 
@@ -53,6 +56,12 @@ class MainActivity : AppCompatActivity() {
 
     // Data from API
     private var serverData: String? = null
+
+    // Variables for tracking internet speed
+    private var previousRxBytes = 0L
+    private var previousTxBytes = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private val speedCheckInterval: Long = 1000  // 1-second interval for checking speed
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +92,11 @@ class MainActivity : AppCompatActivity() {
 
         // Fetch server data from API at the start
         fetchServersData()
+
+        // Start monitoring network speed
+        startNetworkSpeedMonitor()
     }
+
     private fun fetchServersData() {
         // Configure OkHttpClient with connection pooling, keep-alive, and timeouts
         val client = OkHttpClient.Builder()
@@ -119,13 +132,10 @@ class MainActivity : AppCompatActivity() {
 
                     // Store the server data
                     serverData = data
-
-                    // Optionally handle caching here if the server supports ETags or Cache-Control headers
                 }
             }
         })
     }
-
 
     private fun loadAndShowAppOpenAd() {
         val adRequest = AdRequest.Builder().build()
@@ -205,6 +215,8 @@ class MainActivity : AppCompatActivity() {
         statusTextView = findViewById(R.id.textView)
         countryNameTextView = findViewById(R.id.countryName)
         profileImageView = findViewById(R.id.profile_image)
+        uploadSpeedTextView = findViewById(R.id.upload_speed)
+        downloadSpeedTextView = findViewById(R.id.download_speed)
     }
 
     private fun requestNotificationPermission() {
@@ -408,5 +420,33 @@ class MainActivity : AppCompatActivity() {
     override fun onBackPressed() {
         Toast.makeText(this, "Close", Toast.LENGTH_SHORT).show()
         super.onBackPressed()
+    }
+
+    // Function to start monitoring internet speed
+    private fun startNetworkSpeedMonitor() {
+        previousRxBytes = TrafficStats.getTotalRxBytes()
+        previousTxBytes = TrafficStats.getTotalTxBytes()
+
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                val currentRxBytes = TrafficStats.getTotalRxBytes()
+                val currentTxBytes = TrafficStats.getTotalTxBytes()
+
+                // Calculate download and upload speeds in KBps
+                val downloadSpeed = (currentRxBytes - previousRxBytes) / 1024  // KBps
+                val uploadSpeed = (currentTxBytes - previousTxBytes) / 1024  // KBps
+
+                // Update the UI with the current speeds
+                downloadSpeedTextView.text = "$downloadSpeed KB/s"
+                uploadSpeedTextView.text = "$uploadSpeed KB/s"
+
+                // Update previous values for the next calculation
+                previousRxBytes = currentRxBytes
+                previousTxBytes = currentTxBytes
+
+                // Schedule the next speed check
+                handler.postDelayed(this, speedCheckInterval)
+            }
+        }, speedCheckInterval)
     }
 }

@@ -2,6 +2,7 @@ package com.example.privatevpn
 
 import android.content.Intent
 import android.content.SharedPreferences
+import android.net.TrafficStats
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,6 +26,8 @@ lateinit var disconnect: Button
 lateinit var time: TextView
 lateinit var ipAddress: TextView
 lateinit var materialButton: Button
+lateinit var uploadSpeedTextView: TextView
+lateinit var downloadSpeedTextView: TextView
 
 class ConnectActivity : AppCompatActivity() {
     private var startTime: Long = 0 // Variable to store connection start time
@@ -37,13 +40,18 @@ class ConnectActivity : AppCompatActivity() {
     private val additionalTimeInMillis: Long = 60 * 60 * 1000  // 60 minutes in milliseconds
     private var isVpnDisconnected = false  // Flag to prevent multiple redirects
 
-    // Handler for periodically checking IP
+    // Handler for periodically checking IP and network speed
     private val handler = Handler(Looper.getMainLooper())
     private val ipCheckInterval: Long = 1000  // Check IP status every 1 second
 
     // Handler for secondary IP check logic with 3-second delay
     private val secondaryHandler = Handler(Looper.getMainLooper())
     private val secondaryIpCheckInterval: Long = 3000  // Check IP status every 3 seconds
+
+    // Variables for network speed monitoring
+    private var previousRxBytes = 0L
+    private var previousTxBytes = 0L
+    private val speedCheckInterval: Long = 1000  // 1-second interval for checking speed
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +64,8 @@ class ConnectActivity : AppCompatActivity() {
         time = findViewById(R.id.time)
         ipAddress = findViewById(R.id.ipAddress)
         materialButton = findViewById(R.id.materialButton)
+        uploadSpeedTextView = findViewById(R.id.upload_speed) // Referencing TextView for upload speed
+        downloadSpeedTextView = findViewById(R.id.download_speed) // Referencing TextView for download speed
 
         // Initialize sharedPreferences before use
         sharedPreferences = getSharedPreferences("vpnPrefs", MODE_PRIVATE)
@@ -91,6 +101,9 @@ class ConnectActivity : AppCompatActivity() {
 
         // Start secondary IP check logic every 3 seconds
         secondaryHandler.postDelayed(secondaryIpStatusChecker, secondaryIpCheckInterval)
+
+        // Start monitoring network speed every second
+        startNetworkSpeedMonitor()
     }
 
     override fun onResume() {
@@ -196,6 +209,34 @@ class ConnectActivity : AppCompatActivity() {
         Toast.makeText(this, "Added 60 minutes to the session", Toast.LENGTH_SHORT).show()
     }
 
+    // Start monitoring network speed (upload and download)
+    private fun startNetworkSpeedMonitor() {
+        previousRxBytes = TrafficStats.getTotalRxBytes()
+        previousTxBytes = TrafficStats.getTotalTxBytes()
+
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                val currentRxBytes = TrafficStats.getTotalRxBytes()
+                val currentTxBytes = TrafficStats.getTotalTxBytes()
+
+                // Calculate the difference to get the speed in bytes/second
+                val downloadSpeed = (currentRxBytes - previousRxBytes) / 1024  // KBps
+                val uploadSpeed = (currentTxBytes - previousTxBytes) / 1024  // KBps
+
+                // Update the UI with the current speeds
+                downloadSpeedTextView.text = "$downloadSpeed KB/s"
+                uploadSpeedTextView.text = "$uploadSpeed KB/s"
+
+                // Update previous values for the next calculation
+                previousRxBytes = currentRxBytes
+                previousTxBytes = currentTxBytes
+
+                // Schedule the next speed check
+                handler.postDelayed(this, speedCheckInterval)
+            }
+        }, speedCheckInterval)
+    }
+
     private fun fetchIpAddress() {
         val client = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
@@ -252,7 +293,6 @@ class ConnectActivity : AppCompatActivity() {
         }, 2000)
     }
 
-    // Fetch country name based on IP
     private fun fetchCountryInfo(ip: String) {
         countryName = when (ip) {
             "157.245.83.117" -> "United States"
@@ -270,7 +310,6 @@ class ConnectActivity : AppCompatActivity() {
             }
         }
     }
-
 
     private fun fetchAndCheckIpAddress() {
         val client = OkHttpClient.Builder()
@@ -416,8 +455,6 @@ class ConnectActivity : AppCompatActivity() {
             e.printStackTrace()
         }
     }
-
-
 
     override fun onDestroy() {
         super.onDestroy()
