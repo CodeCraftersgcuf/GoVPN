@@ -36,6 +36,14 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-1156738411664537~2249963319" /> <!-- Explicit declaration of the VPN service used by OpenVPN -->
+        <!-- Google Pay API metadata -->
+        <meta-data
+            android:name="com.google.android.gms.wallet.api.enabled"
+            android:value="true"/>
+
+        <meta-data
+            android:name="com.google.android.gms.wallet.api.version"
+            android:value="1"/>
         <service
             android:name="de.blinkt.openvpn.core.OpenVPNService"
             android:exported="true"

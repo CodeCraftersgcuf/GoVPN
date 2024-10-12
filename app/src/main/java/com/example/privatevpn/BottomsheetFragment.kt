@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -16,12 +17,14 @@ class BottomsheetFragment : Fragment() {
 
     private lateinit var sharedPreferences: SharedPreferences
     private var isShowing: Boolean = false // Track if BottomSheet is showing
-
+    private lateinit var cros: ImageView
     override fun onCreateView(
+
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+
         return inflater.inflate(R.layout.bottomsheet_fragment, container, false)
     }
 
@@ -33,13 +36,19 @@ class BottomsheetFragment : Fragment() {
 
         // Load and set the current selected language
         loadSelectedLanguage(view)
-
+        // Initialize the cross icon and set click listener
+        cros = view.findViewById(R.id.cros)
+        cros.setOnClickListener {
+            // Close the current activity on click
+            requireActivity().finish()
+        }
         // Set up click listeners for each language TextView and CheckBox
         setupLanguageClickListeners(view)
     }
 
     private fun setupLanguageClickListeners(view: View) {
         // Find TextViews and CheckBoxes
+
         val textEnglish: TextView = view.findViewById(R.id.textEnglish)
         val textAfrikaans: TextView = view.findViewById(R.id.textAfrikaans)
         val textArabic: TextView = view.findViewById(R.id.textArabic)

@@ -49,6 +49,7 @@
         app:layout_constraintVertical_bias="0.243" />
 
     <LinearLayout
+        android:id="@+id/linearLayout1"
         android:layout_width="match_parent"
         android:layout_height="80dp"
         android:layout_marginStart="30dp"
@@ -67,9 +68,10 @@
             android:layout_height="match_parent">
 
             <CheckBox
+                android:id="@+id/checkBox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checked="true"
+                android:checked="false"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.011"
@@ -77,6 +79,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
+                android:id="@+id/textView1Year"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/_1_year"
@@ -90,6 +93,7 @@
                 app:layout_constraintVertical_bias="0.262" />
 
             <TextView
+                android:id="@+id/textViewPrice1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Rs 4,450.00"
@@ -103,6 +107,7 @@
                 app:layout_constraintVertical_bias="0.262" />
 
             <TextView
+                android:id="@+id/textViewFreeTrial1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/first_03_days_free"
@@ -116,6 +121,7 @@
                 app:layout_constraintVertical_bias="0.714" />
 
             <TextView
+                android:id="@+id/textViewAnnualPrice1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Rs 6600.00/yr"
@@ -129,11 +135,10 @@
                 app:layout_constraintVertical_bias="0.737" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-
-
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/linearLayout2"
         android:layout_width="match_parent"
         android:layout_height="80dp"
         android:layout_marginStart="30dp"
@@ -151,9 +156,10 @@
             android:layout_height="match_parent">
 
             <CheckBox
+                android:id="@+id/checkBox2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checked="true"
+                android:checked="false"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintHorizontal_bias="0.011"
@@ -161,6 +167,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
+                android:id="@+id/textView1Month"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/_1_month"
@@ -174,6 +181,7 @@
                 app:layout_constraintVertical_bias="0.262" />
 
             <TextView
+                android:id="@+id/textViewPrice2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Rs 4,450.00"
@@ -187,6 +195,7 @@
                 app:layout_constraintVertical_bias="0.262" />
 
             <TextView
+                android:id="@+id/textViewFreeTrial2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/first_03_days_free"
@@ -199,11 +208,10 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintVertical_bias="0.714" />
 
-
         </androidx.constraintlayout.widget.ConstraintLayout>
     </LinearLayout>
-
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/startTrialButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="30dp"
@@ -219,6 +227,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.85" />
-
+    <!-- Add the TextView for planAmountTextView here -->
+    <TextView
+        android:id="@+id/planAmountTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Rs 0.00"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_bias="0.85" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

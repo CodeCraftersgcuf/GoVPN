@@ -71,5 +71,10 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:23.4.0")
 
 
+    implementation ("com.google.android.gms:play-services-location:21.3.0")
+
+    implementation ("com.google.android.gms:play-services-wallet:19.4.0")
+
+
 
 }

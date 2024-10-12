@@ -9,15 +9,32 @@
     android:background="@drawable/dialog_bg"
     android:orientation="vertical">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/select_language"
-        android:layout_marginStart="5dp"
-        android:layout_marginTop="5dp"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        android:textStyle="bold"/>
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/select_language"
+            android:layout_marginStart="5dp"
+            android:layout_marginTop="5dp"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_weight="1" /> <!-- This will take the remaining space -->
+
+        <ImageView
+            android:id="@+id/cros"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/close"
+            android:layout_marginEnd="5dp"
+            android:tint="@color/white" />
+    </LinearLayout>
+
 
     <ScrollView
         android:layout_width="match_parent"
