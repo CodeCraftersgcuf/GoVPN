@@ -18,6 +18,8 @@ import android.os.CountDownTimer
 import androidx.appcompat.app.AlertDialog
 import de.hdodenhof.circleimageview.CircleImageView
 import org.json.JSONObject
+import android.provider.Settings
+import android.util.Log
 
 lateinit var profile_image: CircleImageView
 lateinit var priemums: ImageView
@@ -170,7 +172,8 @@ class ConnectActivity : AppCompatActivity() {
 
             override fun onFinish() {
                 Toast.makeText(this@ConnectActivity, "VPN session expired", Toast.LENGTH_SHORT).show()
-                disconnectVPN()
+                val serverId = intent.getIntExtra("SERVER_ID", 1)
+                disconnectVPN(serverId)
             }
         }.start()
         isTimerRunning = true
@@ -361,7 +364,8 @@ class ConnectActivity : AppCompatActivity() {
             if (!isVpnDisconnected) {
                 isVpnDisconnected = true
                 Toast.makeText(this, "VPN disconnected due to IP change.", Toast.LENGTH_SHORT).show()
-                disconnectVPN()
+                val serverId = intent.getIntExtra("SERVER_ID", 1)
+                disconnectVPN(serverId)
             }
         }
     }
@@ -397,7 +401,8 @@ class ConnectActivity : AppCompatActivity() {
 
         confirmButton.setOnClickListener {
             if (confirmButton.text == "Disconnect") {
-                disconnectVPN()
+                val serverId = intent.getIntExtra("SERVER_ID", 1)
+                disconnectVPN(serverId)
                 stopTimer()
                 dialog.dismiss()
             }
@@ -411,7 +416,7 @@ class ConnectActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun disconnectVPN() {
+    private fun disconnectVPN(serverId: Int) {
         try {
             // Stop any running timers and handlers
             stopTimer()
@@ -422,6 +427,40 @@ class ConnectActivity : AppCompatActivity() {
             val disconnectIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
             disconnectIntent.action = de.blinkt.openvpn.core.OpenVPNService.DISCONNECT_VPN
             startService(disconnectIntent)
+
+            // Get the unique phone ID (ANDROID_ID) as the vpn_username
+            val vpnUsername = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+            // Send a POST request to notify the server about the disconnection
+            val client = OkHttpClient()
+            val requestUrl = "https://govpn.ai/api/disconnect"
+
+            // Create a request body with server_id and vpn_username
+            val requestBody = FormBody.Builder()
+                .add("server_id", serverId.toString())
+                .add("vpn_username", vpnUsername)
+                .build()
+
+            val request = Request.Builder()
+                .url(requestUrl)
+                .post(requestBody)
+                .build()
+
+            client.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Log.e("DisconnectVPN", "Failed to send disconnect notification", e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    response.use { res ->
+                        if (res.isSuccessful) {
+                            Log.d("DisconnectVPN", "Disconnect notification successful")
+                        } else {
+                            Log.e("DisconnectVPN", "Failed to notify: ${res.code}, ${res.message}")
+                        }
+                    }
+                }
+            })
 
             // Add a short delay to ensure VPN disconnection is processed before moving to DisconnectActivity
             Handler(Looper.getMainLooper()).postDelayed({

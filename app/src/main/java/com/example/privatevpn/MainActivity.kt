@@ -31,6 +31,7 @@ import okhttp3.*
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.*
+import android.provider.Settings
 
 class MainActivity : AppCompatActivity() {
 
@@ -278,13 +279,15 @@ class MainActivity : AppCompatActivity() {
         val countryName = intent.getStringExtra("COUNTRY_NAME") ?: "United States"
         val flagUrl = intent.getStringExtra("FLAG_URL") ?: ""
         updateCountrySelector(countryName, flagUrl)
-        checkVPNConnection()
+        val serverId = intent.getIntExtra("SERVER_ID", 1)
+        checkVPNConnection(serverId)
     }
 
-    private fun checkVPNConnection() {
+    private fun checkVPNConnection(serverId: Int) {
         val vpnServiceIntent = Intent(this, de.blinkt.openvpn.core.OpenVPNService::class.java)
         if (isServiceRunning(vpnServiceIntent)) {
             val intent = Intent(this, ConnectActivity::class.java)
+            intent.putExtra("SERVER_ID", serverId)
             startActivity(intent)
             finish()
         }
@@ -311,9 +314,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+
     private fun fetchOpenVPNProfile(serverId: Int) {
+        // Get the unique device ID (Android ID)
+        val androidId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+        // Build the request URL with the unique ID as the VPN username
+        val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=$androidId"
+
         val client = OkHttpClient()
-        val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=12312"
         val request = Request.Builder().url(requestUrl).get().build()
 
         client.newCall(request).enqueue(object : Callback {
@@ -340,6 +350,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
+
 
     private fun parseAndStartVPN(ovpnConfig: String) {
         try {
