@@ -13,7 +13,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.children
 import com.google.android.gms.wallet.AutoResolveHelper
 import com.google.android.gms.wallet.PaymentData
 import com.google.android.gms.wallet.PaymentsClient
@@ -22,6 +21,8 @@ import com.google.android.gms.wallet.WalletConstants
 import com.google.android.gms.wallet.PaymentDataRequest
 import com.google.android.material.button.MaterialButton
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -34,8 +35,7 @@ class subciActivity : AppCompatActivity() {
     private lateinit var planAmountTextView: TextView
     private lateinit var paymentsClient: PaymentsClient
     private lateinit var linearLayoutContainer: LinearLayout
-    private var selectedPlan = ""
-    private var selectedPrice = ""
+    private var selectedPlanId: Int? = null // Store the selected plan ID
     private var totalAmount = 0
     private var lastCheckedCheckbox: CheckBox? = null
 
@@ -100,7 +100,6 @@ class subciActivity : AppCompatActivity() {
         })
     }
 
-
     private fun updateUIWithPlans(plans: JSONArray) {
         if (plans.length() == 0) {
             planAmountTextView.text = "No Plan is available"
@@ -114,6 +113,7 @@ class subciActivity : AppCompatActivity() {
             val plan = plans.getJSONObject(i)
             val planDuration = plan.getString("duration")
             val planPrice = plan.getInt("price")
+            val planId = plan.getInt("id") // Get the plan ID
 
             // Create a layout for each plan
             val layout = LinearLayout(this).apply {
@@ -174,6 +174,7 @@ class subciActivity : AppCompatActivity() {
                     // Update total amount and plan amount text view
                     totalAmount = planPrice
                     planAmountTextView.text = "Rs $totalAmount.00"
+                    selectedPlanId = planId // Store the selected plan ID
 
                     // Set the current checkbox as the last checked
                     lastCheckedCheckbox = checkBox
@@ -185,12 +186,16 @@ class subciActivity : AppCompatActivity() {
                     // Clear the last checked reference if it gets unchecked
                     if (lastCheckedCheckbox == checkBox) {
                         lastCheckedCheckbox = null
+                        selectedPlanId = null // Reset selected plan ID
                     }
                 }
             }
         }
     }
 
+    private fun retrieveDeviceId(): String {
+        return android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID)
+    }
 
     private fun getPaymentDataRequest(totalPrice: String): PaymentDataRequest? {
         val baseRequest = JSONObject().apply {
@@ -260,24 +265,68 @@ class subciActivity : AppCompatActivity() {
             LOAD_PAYMENT_DATA_REQUEST_CODE -> {
                 when (resultCode) {
                     RESULT_OK -> {
-                        val paymentData = PaymentData.getFromIntent(data!!)
-                        val paymentInfo = paymentData?.toJson()
-                        Log.i(TAG, "Payment Successful: $paymentInfo")
-                        if (paymentInfo != null) {
-                            Toast.makeText(this, "Payment Successful!", Toast.LENGTH_SHORT).show()
+                        data?.let {
+                            val paymentData = PaymentData.getFromIntent(data)
+                            handlePaymentSuccess(paymentData)
                         }
                     }
                     RESULT_CANCELED -> {
-                        Log.i(TAG, "Payment Cancelled")
-                        Toast.makeText(this, "Payment Cancelled", Toast.LENGTH_SHORT).show()
+                        Log.e(TAG, "Payment cancelled")
                     }
                     AutoResolveHelper.RESULT_ERROR -> {
-                        val errorCode = data?.getStringExtra("com.google.android.gms.wallet.EXTRA_ERROR_CODE")
-                        Log.e(TAG, "Payment Failed: Error Code: $errorCode")
-                        Toast.makeText(this, "Payment Failed: Error Code: $errorCode", Toast.LENGTH_SHORT).show()
+                        Log.e(TAG, "Error in payment")
                     }
                 }
             }
         }
+    }
+
+    private fun handlePaymentSuccess(paymentData: PaymentData?) {
+        paymentData?.let {
+            val paymentMethodToken = it.paymentMethodToken
+            if (paymentMethodToken != null) {
+                val token = paymentMethodToken.token
+                // Handle the token as needed, such as sending it to your server
+                sendSubscriptionRequest()
+            } else {
+                Toast.makeText(this, "Payment failed, try again", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun sendSubscriptionRequest() {
+        val client = OkHttpClient()
+        val requestBodyJson = JSONObject().apply {
+            put("plan_id", selectedPlanId) // Use selected plan ID
+            put("deviceId", retrieveDeviceId()) // Get the device ID
+        }.toString()
+
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/subscribe")
+            .post(requestBodyJson.toRequestBody("application/json".toMediaTypeOrNull()))
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(this@subciActivity, "Failed to subscribe", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Subscription request failed: ${e.message}")
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    runOnUiThread {
+                        Toast.makeText(this@subciActivity, "Subscription successful", Toast.LENGTH_SHORT).show()
+                        // Optionally, redirect to another activity or perform further actions
+                        finish() // Close the subscription activity
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(this@subciActivity, "Failed to subscribe", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        })
     }
 }

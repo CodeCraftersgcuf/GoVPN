@@ -98,45 +98,6 @@ class MainActivity : AppCompatActivity() {
         startNetworkSpeedMonitor()
     }
 
-    private fun fetchServersData() {
-        // Configure OkHttpClient with connection pooling, keep-alive, and timeouts
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)  // Set connection timeout
-            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)     // Set read timeout
-            .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)    // Set write timeout
-            .retryOnConnectionFailure(true)                             // Retry on failure
-            .connectionPool(ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES)) // Connection pool for faster reuse
-            .addInterceptor { chain ->
-                // Add GZIP compression for faster response
-                val request = chain.request().newBuilder()
-                    .addHeader("Accept-Encoding", "gzip")
-                    .build()
-                chain.proceed(request)
-            }
-            .build()
-
-        val request = Request.Builder()
-            .url("https://govpn.ai/api/servers/")
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
-                runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Failed to load server data", Toast.LENGTH_SHORT).show()
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                response.body?.let { responseBody ->
-                    val data = responseBody.string()
-
-                    // Store the server data
-                    serverData = data
-                }
-            }
-        })
-    }
 
     private fun loadAndShowAppOpenAd() {
         val adRequest = AdRequest.Builder().build()
@@ -218,6 +179,45 @@ class MainActivity : AppCompatActivity() {
         profileImageView = findViewById(R.id.profile_image)
         uploadSpeedTextView = findViewById(R.id.upload_speed)
         downloadSpeedTextView = findViewById(R.id.download_speed)
+    }
+    private fun fetchServersData() {
+        // Configure OkHttpClient with connection pooling, keep-alive, and timeouts
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)  // Set connection timeout
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)     // Set read timeout
+            .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)    // Set write timeout
+            .retryOnConnectionFailure(true)                             // Retry on failure
+            .connectionPool(ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES)) // Connection pool for faster reuse
+            .addInterceptor { chain ->
+                // Add GZIP compression for faster response
+                val request = chain.request().newBuilder()
+                    .addHeader("Accept-Encoding", "gzip")
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/servers/")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Failed to load server data", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let { responseBody ->
+                    val data = responseBody.string()
+
+                    // Store the server data
+                    serverData = data
+                }
+            }
+        })
     }
 
     private fun requestNotificationPermission() {

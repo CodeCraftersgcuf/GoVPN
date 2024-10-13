@@ -16,6 +16,8 @@ import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import okhttp3.*
 import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 import java.io.IOException
 
 class StreamingFragment : Fragment() {
@@ -27,12 +29,10 @@ class StreamingFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_streaming, container, false)
 
         countryListLayout = view.findViewById(R.id.countryListLayout)
 
-        // Introduce a delay of 10ms before fetching data
         Handler(Looper.getMainLooper()).postDelayed({
             fetchCountries()
         }, 10)
@@ -101,10 +101,10 @@ class StreamingFragment : Fragment() {
         if (cityListLayout.visibility == View.GONE) {
             cityListLayout.visibility = View.VISIBLE
             populateCityList(cityListLayout, serversArray, countryName, flagUrl)
-            animateDropdownIcon(dropdownIcon, 0f, 180f) // Rotate to 180 degrees when expanded
+            animateDropdownIcon(dropdownIcon, 0f, 180f)
         } else {
             cityListLayout.visibility = View.GONE
-            animateDropdownIcon(dropdownIcon, 180f, 0f) // Rotate back to 0 degrees when collapsed
+            animateDropdownIcon(dropdownIcon, 180f, 0f)
         }
     }
 
@@ -122,28 +122,70 @@ class StreamingFragment : Fragment() {
         countryName: String,
         flagUrl: String
     ) {
-        cityListLayout.removeAllViews() // Clear previous city list
+        cityListLayout.removeAllViews()
         for (j in 0 until serversArray.length()) {
             val serverObject = serversArray.getJSONObject(j)
             val cityName = serverObject.getString("name")
             val cityId = serverObject.getInt("id")
+            val isPremium = serverObject.getString("isPremium").toBoolean()
 
-            // Create a TextView for each city
             val cityTextView = layoutInflater.inflate(R.layout.item_city, null) as TextView
             cityTextView.text = cityName
 
-            // Add onClick listener for city to request OVPN file
             cityTextView.setOnClickListener {
-                requestOvpnFile(cityId, countryName, flagUrl)
+                if (isPremium) {
+                    checkSubscriptionAndProceed(cityId, countryName, flagUrl)
+                } else {
+                    requestOvpnFile(cityId, countryName, flagUrl)
+                }
             }
 
-            // Add city to city list layout
             cityListLayout.addView(cityTextView)
         }
     }
 
+    private fun checkSubscriptionAndProceed(serverId: Int, countryName: String, flagUrl: String) {
+        val deviceId = retrieveDeviceId()
+        val requestBody = FormBody.Builder()
+            .add("deviceId", deviceId)
+            .build()
+
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/checksubscription")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                activity?.runOnUiThread {
+                    Toast.makeText(context, "Failed to check subscription status", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    try {
+                        val jsonResponse = JSONObject(response.body?.string() ?: "")
+                        val isSubscribed = jsonResponse.getBoolean("isSubscribed")
+
+                        activity?.runOnUiThread {
+                            if (isSubscribed) {
+                                requestOvpnFile(serverId, countryName, flagUrl)
+                            } else {
+                                Toast.makeText(context, "Only For Premium Users", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: JSONException) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        })
+    }
+
     private fun requestOvpnFile(serverId: Int, countryName: String, flagUrl: String) {
-        val vpnUsername = "12312" // Replace with actual VPN username
+        val vpnUsername = retrieveDeviceId()
         val requestUrl = "https://govpn.ai/api/ovpn-file/$serverId?vpn_username=$vpnUsername"
 
         val request = Request.Builder()
@@ -171,5 +213,12 @@ class StreamingFragment : Fragment() {
                 }
             }
         })
+    }
+
+    private fun retrieveDeviceId(): String {
+        return android.provider.Settings.Secure.getString(
+            requireContext().contentResolver,
+            android.provider.Settings.Secure.ANDROID_ID
+        )
     }
 }
