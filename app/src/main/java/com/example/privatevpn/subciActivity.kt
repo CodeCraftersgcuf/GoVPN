@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.widget.CheckBox
 import android.widget.ImageView
@@ -99,7 +100,6 @@ class subciActivity : AppCompatActivity() {
             }
         })
     }
-
     private fun updateUIWithPlans(plans: JSONArray) {
         if (plans.length() == 0) {
             planAmountTextView.text = "No Plan is available"
@@ -111,13 +111,14 @@ class subciActivity : AppCompatActivity() {
 
         for (i in 0 until plans.length()) {
             val plan = plans.getJSONObject(i)
-            val planDuration = plan.getString("duration")
-            val planPrice = plan.getInt("price")
-            val planId = plan.getInt("id") // Get the plan ID
+            val planTitle = plan.getString("title")    // Get the plan title
+            val planDuration = plan.getString("duration") // Get the plan duration
+            val planPrice = plan.getInt("price")       // Get the plan price
+            val planId = plan.getInt("id")             // Get the plan ID
 
-            // Create a layout for each plan
+            // Create a vertical layout for each plan
             val layout = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
+                orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -126,46 +127,80 @@ class subciActivity : AppCompatActivity() {
                 }
 
                 // Add padding to the layout (top and bottom)
-                setPadding(16, 16, 16, 16) // Adjust the values as needed for your design
+                setPadding(16, 16, 16, 16)
 
                 // Create a GradientDrawable for the purple border
                 val borderDrawable = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
-                    setStroke(2, Color.parseColor("#6D4AFF")) // Set border width and color using a direct hex value for purple
-                    setColor(Color.TRANSPARENT) // Set background color to transparent
-                    cornerRadius = 8f // Optional: Set rounded corners
+                    setStroke(2, Color.parseColor("#6D4AFF")) // Purple border
+                    setColor(Color.TRANSPARENT)               // Transparent background
+                    cornerRadius = 8f                         // Rounded corners
                 }
 
-                background = borderDrawable // Set the background to the created drawable
+                background = borderDrawable
             }
 
-            // Dynamically create a CheckBox for each plan with a unique ID
-            val checkBox = CheckBox(this).apply {
-                text = planDuration
-                id = View.generateViewId() // Assign a unique ID
+            // Create a horizontal layout for the title and checkbox
+            val titleAndCheckboxLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
             }
 
-            // Create a TextView for the price
-            val priceTextView = TextView(this).apply {
-                text = "Rs $planPrice.00"
+            // Create a TextView for the title
+            val titleTextView = TextView(this).apply {
+                text = planTitle  // Set the plan title
                 textSize = 18f
+                setTextColor(ContextCompat.getColor(this@subciActivity, R.color.white))
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f // Weight of 1 to take up remaining space
+                )
+            }
+
+            // Create a CheckBox for the plan with a unique ID, aligned to the right
+            val checkBox = CheckBox(this).apply {
+                text = planDuration  // Set plan duration in checkbox
+                id = View.generateViewId()  // Assign a unique ID
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    gravity = Gravity.END // Align checkbox to the end
+                }
+            }
+
+            // Ensure checkbox is aligned to the right side by setting gravity in the parent layout
+            titleAndCheckboxLayout.gravity = Gravity.END
+
+            // Add the title TextView and CheckBox to the horizontal layout
+            titleAndCheckboxLayout.addView(titleTextView)
+            titleAndCheckboxLayout.addView(checkBox)
+
+            // Create a TextView for the price (below the title and checkbox)
+            val priceTextView = TextView(this).apply {
+                text = "Rs $planPrice.00"  // Set price
+                textSize = 16f
                 setTextColor(ContextCompat.getColor(this@subciActivity, R.color.white))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    marginStart = 16 // Add margin start for spacing between CheckBox and TextView
+                    topMargin = 8 // Optional: Add margin between price and title/checkbox
                 }
             }
 
-            // Add CheckBox and Price TextView to the layout
-            layout.addView(checkBox)
-            layout.addView(priceTextView)
+            // Add the title and checkbox layout and the price TextView to the main layout
+            layout.addView(titleAndCheckboxLayout) // Add the horizontal layout (title + checkbox)
+            layout.addView(priceTextView)          // Add the price below
 
             // Add the created layout to the container
             linearLayoutContainer.addView(layout)
 
-            // Set the onCheckedChangeListener
+            // Set the onCheckedChangeListener for each CheckBox
             checkBox.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked) {
                     // Uncheck the last checked checkbox if it exists

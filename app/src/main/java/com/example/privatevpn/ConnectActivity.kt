@@ -1,5 +1,6 @@
 package com.example.privatevpn
 
+import android.app.Dialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.TrafficStats
@@ -20,7 +21,12 @@ import de.hdodenhof.circleimageview.CircleImageView
 import org.json.JSONObject
 import android.provider.Settings
 import android.util.Log
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.appopen.AppOpenAd
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import com.google.android.gms.ads.*
+
 
 lateinit var profile_image: CircleImageView
 lateinit var priemums: ImageView
@@ -55,6 +61,9 @@ class ConnectActivity : AppCompatActivity() {
     private var previousRxBytes = 0L
     private var previousTxBytes = 0L
     private val speedCheckInterval: Long = 1000  // 1-second interval for checking speed
+    // App Open Ad
+    private var appOpenAd: AppOpenAd? = null
+    private var isAdShowing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -177,10 +186,21 @@ class ConnectActivity : AppCompatActivity() {
             }
 
             override fun onFinish() {
-                Toast.makeText(this@ConnectActivity, "VPN session expired", Toast.LENGTH_SHORT).show()
-                val serverId = intent.getIntExtra("SERVER_ID", 1)
-                disconnectVPN(serverId)
+                Toast.makeText(this@ConnectActivity, "VPN session expired, adding 1 minute.", Toast.LENGTH_SHORT).show()
+
+                // Add 1 minute (60 * 1000 milliseconds)
+                timeLeftInMillis += 60 * 1000
+
+                // Restart the timer with the updated time
+                if (isTimerRunning) {
+                    timer.cancel()  // Cancel the current timer
+                }
+
+                // Update the UI with the new time and restart the timer
+                updateTimerText()
+                startTimer()
             }
+
         }.start()
         isTimerRunning = true
     }
@@ -204,18 +224,90 @@ class ConnectActivity : AppCompatActivity() {
             return
         }
 
-        // Add 60 minutes to the current time left
-        timeLeftInMillis += additionalTimeInMillis
+        // Show the countdown dialog
+        val dialog = Dialog(this)
+        dialog.setContentView(R.layout.countdown_dialog)
+        dialog.setCancelable(false)  // Prevent user from closing it early
 
-        if (isTimerRunning) {
-            timer.cancel()
-            startTimer()
-        } else {
-            updateTimerText()
-            startTimer()
+        // Get references to the TextViews in the dialog
+        val timerTextView = dialog.findViewById<TextView>(R.id.timerCountdown)
+        val countdownText = dialog.findViewById<TextView>(R.id.countdownTimerText)
+
+        // Show the dialog
+        dialog.show()
+
+        // Start the countdown from 7 seconds
+        val countdownTime = 7
+        var timeRemaining = countdownTime
+
+        // Create a Handler to update the countdown every second
+        val countdownHandler = Handler(Looper.getMainLooper())
+        val countdownRunnable = object : Runnable {
+            override fun run() {
+                if (timeRemaining > 0) {
+                    // Update the timer in the dialog
+                    timerTextView.text = timeRemaining.toString()
+                    timeRemaining--
+
+                    // Schedule the next update in 1 second
+                    countdownHandler.postDelayed(this, 1000)
+                } else {
+                    // When countdown is finished, dismiss the dialog and proceed
+                    dialog.dismiss()
+
+                    // Load and show the ad
+                    loadAndShowAppOpenAd()
+
+                    // After the ad is shown, introduce a 5-second delay before adding time
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        // Add 60 minutes to the current time left
+                        timeLeftInMillis += additionalTimeInMillis
+
+                        if (isTimerRunning) {
+                            timer.cancel()
+                            startTimer()
+                        } else {
+                            updateTimerText()
+                            startTimer()
+                        }
+
+                        Toast.makeText(this@ConnectActivity, "Added 60 minutes to the session", Toast.LENGTH_SHORT).show()
+                    }, 10)
+                }
+            }
         }
 
-        Toast.makeText(this, "Added 60 minutes to the session", Toast.LENGTH_SHORT).show()
+        // Start the countdown
+        countdownHandler.post(countdownRunnable)
+    }
+
+    private fun loadAndShowAppOpenAd() {
+        val adRequest = AdRequest.Builder().build()
+        AppOpenAd.load(
+            this,
+            "ca-app-pub-1156738411664537/8098654971", // Your Ad Unit ID
+            adRequest,
+            AppOpenAd.APP_OPEN_AD_ORIENTATION_PORTRAIT,
+            object : AppOpenAd.AppOpenAdLoadCallback() {
+                override fun onAdLoaded(ad: AppOpenAd) {
+                    appOpenAd = ad
+                    showAdIfAvailable()
+                }
+
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    Log.e("AdMob", "Failed to load app open ad: ${loadAdError.message}")
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        loadAndShowAppOpenAd() // Retry loading the ad after failure
+                    }, 3000) // Retry after 3 seconds
+                }
+            }
+        )
+    }
+    private fun showAdIfAvailable() {
+        if (appOpenAd != null && !isAdShowing) {
+            appOpenAd?.show(this)
+            isAdShowing = true
+        }
     }
     private fun checkSubscriptionStatus() {
         // Get device ID (Android ID)
@@ -278,7 +370,7 @@ class ConnectActivity : AppCompatActivity() {
 //                                updateTimerText()  // Update the UI to reflect the new time
 //                                startTimer()       // Start the timer
 //                            }
-                            Toast.makeText(this@ConnectActivity, "Regular user: 30 minutes timer", Toast.LENGTH_SHORT).show()
+//                            Toast.makeText(this@ConnectActivity, "Regular user: 30 minutes timer", Toast.LENGTH_SHORT).show()
                         }
 
                     }

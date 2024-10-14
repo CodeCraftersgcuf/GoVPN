@@ -32,6 +32,8 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.util.*
 import android.provider.Settings
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
@@ -71,14 +73,11 @@ class MainActivity : AppCompatActivity() {
         // Initialize Google Mobile Ads SDK
         MobileAds.initialize(this) {}
 
-        // Load and show App Open Ad
-        loadAndShowAppOpenAd()
+        // Check subscription status and load ads accordingly
+        checkSubscriptionAndLoadAds()
 
         // Initialize Views
         initializeViews()
-
-        // Load Banner Ad
-        loadBannerAd()
 
         // Check for Internet Connectivity
         if (!isNetworkAvailable()) {
@@ -96,6 +95,53 @@ class MainActivity : AppCompatActivity() {
 
         // Start monitoring network speed
         startNetworkSpeedMonitor()
+    }
+    private fun checkSubscriptionAndLoadAds() {
+        // Get device ID (Android ID)
+        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+        // Prepare the request body
+        val requestBody = RequestBody.create(
+            "application/json".toMediaTypeOrNull(),
+            JSONObject().put("deviceId", deviceId).toString()
+        )
+
+        // Make a POST request to check subscription status
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/checksubscription") // Your subscription check URL
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                runOnUiThread {
+                    // If subscription check fails, assume regular user and load ads
+                    loadAndShowAppOpenAd()
+                    loadBannerAd()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let { responseBody ->
+                    val responseJson = JSONObject(responseBody.string())
+                    val isSubscribed = responseJson.getBoolean("status") // Assuming "status" indicates if the user is subscribed
+
+                    // On the UI thread
+                    runOnUiThread {
+                        if (isSubscribed) {
+                            // User is subscribed, do not load ads
+                            Toast.makeText(this@MainActivity, "Premium user: No ads", Toast.LENGTH_SHORT).show()
+                        } else {
+                            // Regular user, load the ads
+                            loadAndShowAppOpenAd()
+                            loadBannerAd()
+                        }
+                    }
+                }
+            }
+        })
     }
 
 
