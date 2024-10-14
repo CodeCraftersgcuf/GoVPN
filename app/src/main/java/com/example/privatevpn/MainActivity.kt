@@ -144,9 +144,9 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-
     private fun loadAndShowAppOpenAd() {
         val adRequest = AdRequest.Builder().build()
+
         AppOpenAd.load(
             this,
             "ca-app-pub-1156738411664537/8098654971", // Your Ad Unit ID
@@ -160,37 +160,50 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     Log.e("AdMob", "Failed to load app open ad: ${loadAdError.message}")
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        loadAndShowAppOpenAd() // Retry loading the ad after failure
-                    }, 3000) // Retry after 3 seconds
+                    retryLoadAppOpenAd() // Call retry method when loading fails
                 }
             }
         )
     }
 
-    private fun showAdIfAvailable() {
-        if (appOpenAd != null && !isAdShowing) {
-            appOpenAd?.show(this)
-            isAdShowing = true
-        }
+    private fun retryLoadAppOpenAd() {
+        // Retry logic for loading the App Open Ad
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.d("AdMob", "Retrying to load app open ad")
+            loadAndShowAppOpenAd() // Retry loading the ad after failure
+        }, 3000) // Retry after 3 seconds
     }
 
     private fun loadBannerAd() {
         adView = findViewById(R.id.adView)
         val adRequest = AdRequest.Builder().build()
-        adView.loadAd(adRequest)
 
+        adView.loadAd(adRequest)
         adView.adListener = object : AdListener() {
             override fun onAdLoaded() {
                 Log.d("AdMob", "Banner ad loaded successfully")
             }
 
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                Log.e("AdMob", "Failed to load banner ad: ${error.message}")
-                Handler(Looper.getMainLooper()).postDelayed({
-                    adView.loadAd(adRequest)
-                }, 5000)
+            override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                Log.e("AdMob", "Failed to load banner ad: ${loadAdError.message}")
+                retryLoadBannerAd(adRequest)
             }
+        }
+    }
+
+    private fun retryLoadBannerAd(adRequest: AdRequest) {
+        // Retry logic for loading Banner Ad
+        Handler(Looper.getMainLooper()).postDelayed({
+            Log.d("AdMob", "Retrying to load banner ad")
+            adView.loadAd(adRequest)
+        }, 5000) // Retry after 5 seconds
+    }
+
+
+    private fun showAdIfAvailable() {
+        if (appOpenAd != null && !isAdShowing) {
+            appOpenAd?.show(this)
+            isAdShowing = true
         }
     }
 
@@ -298,6 +311,7 @@ class MainActivity : AppCompatActivity() {
                 intent.putExtra("SERVER_DATA", serverData) // Pass server data
                 startActivity(intent)
             } else {
+                fetchServersData()
                 Toast.makeText(this, "Server data not yet loaded", Toast.LENGTH_SHORT).show()
             }
         }

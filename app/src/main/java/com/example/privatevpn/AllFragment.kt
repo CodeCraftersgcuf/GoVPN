@@ -2,6 +2,7 @@ package com.example.privatevpn
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -125,7 +126,43 @@ class AllFragment : Fragment() {
             val signalUrl = serverObject.getString("signal")  // Dynamic signal icon URL
             val premiumUrl = "https://govpn.ai/storage/icons/premium.png"  // Static premium icon URL
 
-            // Create a horizontal LinearLayout programmatically
+            // Create a vertical LinearLayout to stack cityName and status
+            val cityInfoLayout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f // Take up remaining space in horizontal layout
+                )
+            }
+
+            // Create the TextView for the city name
+            val cityTextView = TextView(context).apply {
+                text = cityName
+                setTextSize(18f)
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+            }
+
+            // Create the TextView for Free or Premium status
+            val statusTextView = TextView(context).apply {
+                text = if (isPremium) "Premium" else "Free"
+                setTextSize(13f)
+                setTextColor(Color.parseColor("#808080"))  // Hardcoded grey color (#808080)
+
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = 6.dpToPx()  // Add top margin of 6dp
+                }
+            }
+
+
+            // Add city name and status to the vertical layout
+            cityInfoLayout.addView(cityTextView)
+            cityInfoLayout.addView(statusTextView)
+
+            // Create a horizontal LinearLayout to hold the city info and icons
             val cityLayout = LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 layoutParams = LinearLayout.LayoutParams(
@@ -136,25 +173,12 @@ class AllFragment : Fragment() {
                 }
             }
 
-            // Create the TextView for the city name
-            val cityTextView = TextView(context).apply {
-                text = cityName
-                layoutParams = LinearLayout.LayoutParams(
-                    0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    1f  // Take up the remaining space
-                )
-                setTextSize(18f)
-                setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
-                setPadding(16, 10, 10, 10)  // Adjust padding if necessary
-            }
-
             // Create the ImageView for the signal icon
             val signalImageView = ImageView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(25.dpToPx(), 25.dpToPx())  // Set width and height to 25dp
+                layoutParams = LinearLayout.LayoutParams(30.dpToPx(), 30.dpToPx())  // Set width and height to 30dp
             }
 
-            // Use Glide to load the signal icon into the ImageView
+            // Load the signal icon using Glide
             context?.let {
                 Glide.with(it)
                     .load(signalUrl)
@@ -169,7 +193,7 @@ class AllFragment : Fragment() {
                 visibility = if (isPremium) View.VISIBLE else View.GONE
             }
 
-            // Use Glide to load the premium icon if the server is premium
+            // Load the premium icon using Glide if the server is premium
             if (isPremium) {
                 context?.let {
                     Glide.with(it)
@@ -188,7 +212,7 @@ class AllFragment : Fragment() {
             }
 
             // Add the TextView and both ImageViews to the horizontal LinearLayout
-            cityLayout.addView(cityTextView)
+            cityLayout.addView(cityInfoLayout)
             cityLayout.addView(signalImageView)
             cityLayout.addView(premiumImageView)
 
