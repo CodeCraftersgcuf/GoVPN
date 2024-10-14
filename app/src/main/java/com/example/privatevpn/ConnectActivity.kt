@@ -20,6 +20,7 @@ import de.hdodenhof.circleimageview.CircleImageView
 import org.json.JSONObject
 import android.provider.Settings
 import android.util.Log
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 lateinit var profile_image: CircleImageView
 lateinit var priemums: ImageView
@@ -59,6 +60,7 @@ class ConnectActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_connect)
 
+        // Initialize views
         profile_image = findViewById(R.id.profile_image)
         priemums = findViewById(R.id.priemums)
         toggles = findViewById(R.id.toggles)
@@ -66,11 +68,14 @@ class ConnectActivity : AppCompatActivity() {
         time = findViewById(R.id.time)
         ipAddress = findViewById(R.id.ipAddress)
         materialButton = findViewById(R.id.materialButton)
-        uploadSpeedTextView = findViewById(R.id.upload_speed) // Referencing TextView for upload speed
-        downloadSpeedTextView = findViewById(R.id.download_speed) // Referencing TextView for download speed
+        uploadSpeedTextView = findViewById(R.id.upload_speed)
+        downloadSpeedTextView = findViewById(R.id.download_speed)
 
         // Initialize sharedPreferences before use
         sharedPreferences = getSharedPreferences("vpnPrefs", MODE_PRIVATE)
+
+        // Check subscription status and set timer accordingly
+        checkSubscriptionStatus()
 
         // Get saved start time from sharedPreferences, or set it to the current time if not present
         val savedStartTime = sharedPreferences.getLong("vpnStartTime", 0L)
@@ -107,6 +112,7 @@ class ConnectActivity : AppCompatActivity() {
         // Start monitoring network speed every second
         startNetworkSpeedMonitor()
     }
+
 
     override fun onResume() {
         super.onResume()
@@ -210,6 +216,75 @@ class ConnectActivity : AppCompatActivity() {
         }
 
         Toast.makeText(this, "Added 60 minutes to the session", Toast.LENGTH_SHORT).show()
+    }
+    private fun checkSubscriptionStatus() {
+        // Get device ID (Android ID)
+        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+
+        // Prepare the request body
+        val requestBody = RequestBody.create(
+            "application/json".toMediaTypeOrNull(),
+            JSONObject().put("deviceId", deviceId).toString()
+        )
+
+        // Make a POST request to check subscription status
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/checksubscription")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                runOnUiThread {
+                    Toast.makeText(this@ConnectActivity, "Failed to check subscription status", Toast.LENGTH_SHORT).show()
+                    // Default to 30-minute timer in case of failure
+                    timeLeftInMillis = thirtyMinutesInMillis
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let { responseBody ->
+                    val responseJson = JSONObject(responseBody.string())
+                    val isPremium = responseJson.getBoolean("status")
+
+                    // Set the timer based on subscription status
+                    runOnUiThread {
+                        if (isPremium) {
+                            // Set timer to 24 hours for premium users
+                            timeLeftInMillis = 24 * 60 * 60 * 1000  // 24 hours in milliseconds
+
+                            // Check if the timer is running, cancel it and restart with the new time
+                            if (isTimerRunning) {
+                                timer.cancel()  // Cancel the current running timer
+                                startTimer()     // Start a new timer with updated time
+                            } else {
+                                updateTimerText()  // Update the UI to reflect the new time
+                                startTimer()       // Start the timer
+                            }
+
+                            Toast.makeText(this@ConnectActivity, "Premium user: 24 hours timer", Toast.LENGTH_SHORT).show()
+                        } else {
+//                            timeLeftInMillis = thirtyMinutesInMillis // 30 minutes for regular users
+//                            // Set timer to 30 minutes for regular users
+//                            timeLeftInMillis = thirtyMinutesInMillis
+//
+//                            // Check if the timer is running, cancel it and restart with the new time
+//                            if (isTimerRunning) {
+//                                timer.cancel()  // Cancel the current running timer
+//                                startTimer()     // Start a new timer with updated time
+//                            } else {
+//                                updateTimerText()  // Update the UI to reflect the new time
+//                                startTimer()       // Start the timer
+//                            }
+                            Toast.makeText(this@ConnectActivity, "Regular user: 30 minutes timer", Toast.LENGTH_SHORT).show()
+                        }
+
+                    }
+                }
+            }
+        })
     }
 
     // Start monitoring network speed (upload and download)

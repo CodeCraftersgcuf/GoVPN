@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +16,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -146,18 +148,25 @@ class GamingFragment : Fragment() {
         }
     }
 
-
     private fun checkSubscriptionAndProceed(serverId: Int, countryName: String, flagUrl: String) {
-        val deviceId = retrieveDeviceId()
-        val requestBody = FormBody.Builder()
-            .add("deviceId", deviceId)
-            .build()
+        // Get the actual device ID (Android ID)
+        val deviceId = Settings.Secure.getString(context?.contentResolver, Settings.Secure.ANDROID_ID)
 
+        // Prepare the request body
+        val requestBody = RequestBody.create(
+            "application/json".toMediaTypeOrNull(),
+            JSONObject().put("deviceId", deviceId).toString()  // Use the actual Android ID
+        )
+
+        val client = OkHttpClient()  // Initialize OkHttpClient if not done elsewhere
+
+        // Build the request
         val request = Request.Builder()
             .url("https://govpn.ai/api/checksubscription")
             .post(requestBody)
             .build()
 
+        // Execute the network call
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
@@ -169,8 +178,12 @@ class GamingFragment : Fragment() {
             override fun onResponse(call: Call, response: Response) {
                 if (response.isSuccessful) {
                     try {
-                        val jsonResponse = JSONObject(response.body?.string() ?: "")
-                        val isSubscribed = jsonResponse.getBoolean("isSubscribed")
+                        // Consume the response body only once
+                        val jsonResponseString = response.body?.string() ?: ""
+                        val jsonResponse = JSONObject(jsonResponseString)
+
+                        // Assuming the correct key is "status" based on your earlier response format
+                        val isSubscribed = jsonResponse.getBoolean("status")
 
                         activity?.runOnUiThread {
                             if (isSubscribed) {
@@ -186,6 +199,7 @@ class GamingFragment : Fragment() {
             }
         })
     }
+
 
     private fun requestOvpnFile(serverId: Int, countryName: String, flagUrl: String) {
         val vpnUsername = retrieveDeviceId()
