@@ -26,6 +26,7 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.appopen.AppOpenAd
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import com.google.android.gms.ads.*
+import org.json.JSONArray
 
 
 lateinit var profile_image: CircleImageView
@@ -464,20 +465,80 @@ class ConnectActivity : AppCompatActivity() {
     }
 
     private fun fetchCountryInfo(ip: String) {
-        countryName = when (ip) {
-            "157.245.83.117" -> "United States"
-            "139.59.171.30" -> "United Kingdom"
-            else -> "Unknown"
-        }
+        val client = OkHttpClient()
+        val url = "https://govpn.ai/api/servers" // Your API URL
+
+        val request = Request.Builder()
+            .url(url)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                runOnUiThread {
+                    countryName = "Unknown" // Default to Unknown on failure
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    response.body?.let { responseBody ->
+                        try {
+                            val jsonResponse = JSONArray(responseBody.string())
+                            var fetchedCountry = "Unknown"
+
+                            // Iterate through the API response
+                            for (i in 0 until jsonResponse.length()) {
+                                val countryObject = jsonResponse.getJSONObject(i)
+                                val countryName = countryObject.getString("name")
+                                val serversArray = countryObject.getJSONArray("servers")
+
+                                // Iterate through servers to find the matching IP
+                                for (j in 0 until serversArray.length()) {
+                                    val serverObject = serversArray.getJSONObject(j)
+                                    val serverIp = serverObject.getString("ip_address")
+
+                                    if (serverIp == ip) {
+                                        fetchedCountry = countryName // Found matching IP, get country name
+                                        break
+                                    }
+                                }
+
+                                // Exit loop if IP match is found
+                                if (fetchedCountry != "Unknown") {
+                                    break
+                                }
+                            }
+
+                            // Update the UI with the fetched country name
+                            runOnUiThread {
+                                countryName = fetchedCountry
+                            }
+
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            runOnUiThread {
+                                countryName = "Unknown"
+                            }
+                        }
+                    }
+                } else {
+                    runOnUiThread {
+                        countryName = "Unknown"
+                    }
+                }
+            }
+        })
     }
+
 
     private val ipStatusChecker = object : Runnable {
         override fun run() {
-            fetchAndCheckIpAddress()
-            if (!isVpnDisconnected) {
-                // Adding a 2-second delay
-                handler.postDelayed(this, ipCheckInterval + 5000)  // Delay of 2 seconds added
-            }
+//            fetchAndCheckIpAddress()
+//            if (!isVpnDisconnected) {
+//                // Adding a 2-second delay
+//                handler.postDelayed(this, ipCheckInterval + 5000)  // Delay of 2 seconds added
+//            }
         }
     }
 
@@ -503,7 +564,7 @@ class ConnectActivity : AppCompatActivity() {
                         try {
                             val jsonObject = JSONObject(responseData)
                             val currentIp = jsonObject.getString("ip")
-                            checkIpAddress(currentIp)
+//                            checkIpAddress(currentIp)
                         } catch (e: Exception) {
                             // Handle failure silently
                         }
@@ -523,19 +584,58 @@ class ConnectActivity : AppCompatActivity() {
     }
 
     private fun checkIpAddress(currentIp: String) {
-        val allowedIps = setOf("139.59.171.30", "157.245.83.117", "0.0.0.0")
+        val allowedIps = mutableSetOf<String>() // Dynamic IPs set
         val storedIp = sharedPreferences.getString("storedIp", "0.0.0.0") ?: "0.0.0.0"
 
-        if (currentIp !in allowedIps || storedIp !in allowedIps) {
-            stopTimer()
-            if (!isVpnDisconnected) {
-                isVpnDisconnected = true
-                Toast.makeText(this, "VPN disconnected due to IP change.", Toast.LENGTH_SHORT).show()
-                val serverId = intent.getIntExtra("SERVER_ID", 1)
-                disconnectVPN(serverId)
+        // Make an API call to fetch allowed IPs from the servers response
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://govpn.ai/api/servers")  // API URL to fetch servers
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                // If there is a failure in fetching allowed IPs, show a toast
+                runOnUiThread {
+                }
             }
-        }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    response.body?.let { responseBody ->
+                        val jsonArray = JSONArray(responseBody.string())
+                        for (i in 0 until jsonArray.length()) {
+                            val countryObject = jsonArray.getJSONObject(i)
+                            val serversArray = countryObject.getJSONArray("servers")
+                            for (j in 0 until serversArray.length()) {
+                                val serverObject = serversArray.getJSONObject(j)
+                                val ipAddress = serverObject.getString("ip_address")
+                                allowedIps.add(ipAddress)
+                            }
+                        }
+
+                        // After fetching the allowed IPs, perform the IP check
+                        runOnUiThread {
+                            if (currentIp !in allowedIps || storedIp !in allowedIps) {
+                                stopTimer()
+                                if (!isVpnDisconnected) {
+                                    isVpnDisconnected = true
+                                    val serverId = intent.getIntExtra("SERVER_ID", 1)
+                                    disconnectVPN(serverId)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // If the response is not successful, show a toast
+                    runOnUiThread {
+                    }
+                }
+            }
+        })
     }
+
 
     private fun performSecondaryIpCheck() {
         fetchIpAddress()

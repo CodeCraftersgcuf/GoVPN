@@ -10,6 +10,11 @@ import com.google.android.material.button.MaterialButton
 import de.hdodenhof.circleimageview.CircleImageView
 import java.util.concurrent.TimeUnit
 
+
+import com.bumptech.glide.Glide
+import okhttp3.*
+import org.json.JSONArray
+import java.io.IOException
 class DisconnectActivity : AppCompatActivity() {
 
     // Declare UI components
@@ -57,7 +62,7 @@ class DisconnectActivity : AppCompatActivity() {
 
         // Set the dynamic data
         setDynamicData(
-            countryName = countryName,
+
             duration = durationFormatted,
             ipAddress = ipAddress
         )
@@ -65,23 +70,97 @@ class DisconnectActivity : AppCompatActivity() {
 
     // Function to set dynamic data
     private fun setDynamicData(
-        countryName: String,
         duration: String,
         ipAddress: String
     ) {
-        // Determine the correct flag resource ID based on the country name
-        val countryFlagResId = when (countryName) {
-            "United States" -> R.drawable.us // Image for United States
-            "United Kingdom" -> R.drawable.flag // Image for United Kingdom
-            else -> R.drawable.default_flag // Use the default flag or current image if no match
-        }
+        val client = OkHttpClient()
+        val url = "https://govpn.ai/api/servers" // Your API URL
 
-        // Set the profile image, country name, duration, and IP address
-        profileImage.setImageResource(countryFlagResId)
-        countryNameTextView.text = countryName
-        durationTextView.text = duration
-        ipAddressTextView.text = ipAddress
+        val request = Request.Builder()
+            .url(url)
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                runOnUiThread {
+                    // Load default data if API fails
+                    profileImage.setImageDrawable(null)
+                    countryNameTextView.text = "Unknown"
+                    durationTextView.text = duration
+                    ipAddressTextView.text = ipAddress
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    if (responseBody != null) {
+                        val jsonResponse = JSONArray(responseBody)
+                        var countryFlagUrl: String? = null
+                        var fetchedCountryName: String = "Unknown"
+
+                        // Iterate through the API response to match the IP address
+                        for (i in 0 until jsonResponse.length()) {
+                            val countryObject = jsonResponse.getJSONObject(i)
+                            val serversArray = countryObject.getJSONArray("servers")
+
+                            for (j in 0 until serversArray.length()) {
+                                val serverObject = serversArray.getJSONObject(j)
+                                val serverIp = serverObject.getString("ip_address")
+
+                                if (serverIp == ipAddress) {
+                                    // If IP matches, get the country name and flag
+                                    fetchedCountryName = countryObject.getString("name")
+                                    countryFlagUrl = countryObject.getString("flag")
+                                    break
+                                }
+                            }
+
+                            if (fetchedCountryName != "Unknown") {
+                                break
+                            }
+                        }
+
+                        // Update the UI with the fetched country flag and information
+                        runOnUiThread {
+                            if (countryFlagUrl != null) {
+                                // Use Glide to load the flag image from the URL
+                                Glide.with(this@DisconnectActivity) // Replace with your activity name
+                                    .load(countryFlagUrl)
+                                    .into(profileImage)
+                            } else {
+                                // Use default flag if the country is not found
+                                profileImage.setImageDrawable(null)
+                            }
+
+                            // Set the country name, duration, and IP address
+                            countryNameTextView.text = fetchedCountryName
+                            durationTextView.text = duration
+                            ipAddressTextView.text = ipAddress
+                        }
+                    } else {
+                        // Handle when response body is null
+                        runOnUiThread {
+                            profileImage.setImageDrawable(null)
+                            countryNameTextView.text = "Unknown"
+                            durationTextView.text = duration
+                            ipAddressTextView.text = ipAddress
+                        }
+                    }
+                } else {
+                    // Handle unsuccessful response
+                    runOnUiThread {
+                        profileImage.setImageDrawable(null)
+                        countryNameTextView.text = "Unknown"
+                        durationTextView.text = duration
+                        ipAddressTextView.text = ipAddress
+                    }
+                }
+            }
+        })
     }
+
 
     // Helper function to format the duration from milliseconds to HH:MM:SS
     private fun formatDuration(durationMillis: Long): String {
